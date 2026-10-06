@@ -139,3 +139,31 @@ class Graph:
                     Connection(origin_id=origin_id, destination_id=dest_id, cost_km=cost)
                 )
         return result
+
+    def neighbors(self, point_id_str):
+        try:
+            point_id = uuid.UUID(str(point_id_str))
+        except (ValueError, AttributeError):
+            raise PointNotFound(f"El punto '{point_id_str}' no existe.")
+        if point_id not in self._points:
+            raise PointNotFound(f"El punto '{point_id_str}' no existe.")
+        return {str(k): str(v) for k, v in self._adjacency.get(point_id, {}).items()}
+
+    def readable_network(self):
+        result = []
+        for point_id, point in self._points.items():
+            connections = [
+                {
+                    "destination_id": str(dest_id),
+                    "destination_name": self._points[dest_id].name,
+                    "cost_km": str(cost),
+                }
+                for dest_id, cost in self._adjacency.get(point_id, {}).items()
+            ]
+            result.append({
+                "id": str(point_id),
+                "name": point.name,
+                "type": point.type,
+                "connections": connections,
+            })
+        return result
