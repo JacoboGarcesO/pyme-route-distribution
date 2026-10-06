@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 from domain.graph import Graph
 from domain.errors import (
@@ -33,6 +33,14 @@ _ERROR_CODES = {
 }
 
 _DOMAIN_EXCEPTIONS = tuple(_ERROR_CODES)
+
+
+def json_body():
+    """Return the parsed JSON body; raises MissingData when absent or not an object."""
+    data = request.get_json(silent=True, force=True)
+    if not isinstance(data, dict):
+        raise MissingData("El cuerpo de la petición debe ser un objeto JSON válido.")
+    return data
 
 
 def _error_response(exc):
