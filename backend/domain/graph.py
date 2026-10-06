@@ -165,14 +165,12 @@ class Graph:
             for connection in self._outgoing(point.id)
         ]
 
-    def neighbors(self, point_id_str):
-        try:
-            point_id = uuid.UUID(str(point_id_str))
-        except (ValueError, AttributeError):
-            raise PointNotFound(f"El punto '{point_id_str}' no existe.")
-        if point_id not in self._points:
-            raise PointNotFound(f"El punto '{point_id_str}' no existe.")
-        return {str(k): str(v) for k, v in self._adjacency.get(point_id, {}).items()}
+    def neighbors(self, point_id):
+        """Outgoing connections of a point as {destination UUID: cost_km Decimal}."""
+        parsed_id = self._parse_uuid(point_id)
+        if parsed_id is None or parsed_id not in self._points:
+            raise PointNotFound(f"El punto '{point_id}' no existe.")
+        return {c.destination_id: c.cost_km for c in self._outgoing(parsed_id)}
 
     def readable_network(self):
         result = []
