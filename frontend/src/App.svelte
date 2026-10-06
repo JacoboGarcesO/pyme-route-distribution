@@ -1,13 +1,18 @@
 <script>
-  import { listPoints } from './lib/api.js'
+  import { getNetwork, listPoints } from './lib/api.js'
   import BackendStatus from './lib/BackendStatus.svelte'
   import ConnectionForm from './lib/ConnectionForm.svelte'
+  import NetworkView from './lib/NetworkView.svelte'
   import PointForm from './lib/PointForm.svelte'
   import PointsList from './lib/PointsList.svelte'
 
   let points = $state([])
   let pointsLoading = $state(true)
   let pointsError = $state('')
+
+  let network = $state([])
+  let networkLoading = $state(true)
+  let networkError = $state(null)
 
   async function loadPoints() {
     pointsLoading = true
@@ -21,8 +26,21 @@
     }
   }
 
+  async function loadNetwork() {
+    networkLoading = true
+    networkError = null
+    try {
+      network = await getNetwork()
+    } catch (error) {
+      networkError = error
+    } finally {
+      networkLoading = false
+    }
+  }
+
   function refresh() {
     loadPoints()
+    loadNetwork()
   }
 
   refresh()
@@ -37,6 +55,8 @@
 
   <PointForm onCreated={refresh} />
   <ConnectionForm {points} onCreated={refresh} />
+
+  <NetworkView {network} loading={networkLoading} error={networkError} />
 
   <PointsList {points} loading={pointsLoading} error={pointsError} />
   <button type="button" onclick={refresh}>Actualizar</button>
