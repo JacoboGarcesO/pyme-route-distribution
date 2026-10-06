@@ -49,15 +49,15 @@ class Graph:
         self._adjacency = {}  # {UUID: {UUID: Decimal}}
 
     def add_point(self, name, type):
-        if not name or not str(name).strip():
+        if not isinstance(name, str) or not name.strip():
             raise InvalidName("El nombre del punto no puede estar vacío.")
-        if type not in VALID_TYPES:
+        if not isinstance(type, str) or type not in VALID_TYPES:
             raise InvalidType(
                 f"El tipo '{type}' no es válido. "
                 "Tipos permitidos: warehouse, neighborhood, pickup_point."
             )
         point_id = uuid.uuid4()
-        point = Point(id=point_id, name=str(name).strip(), type=type)
+        point = Point(id=point_id, name=name.strip(), type=type)
         self._points[point_id] = point
         self._adjacency[point_id] = {}
         return point
