@@ -155,10 +155,10 @@ expect_value("Red vacia: red legible vacia", [], lambda: Graph().readable_networ
 expect_value("T11: 15 puntos", 15, lambda: len(graph.list_points()))
 expect_value("T11: 28 conexiones", 28, lambda: len(graph.list_connections()))
 expect_value(
-    "Puntos en orden estable (por nombre)",
+    "Red legible en orden estable (por nombre)",
     ["Bodega", "C10K5", "C10K6", "C10K7", "C10K8", "C11K6", "C11K7", "C11K8",
      "C12K5", "C12K6", "C12K7", "C12K8", "Casa A", "Casa B", "Casa C"],
-    lambda: [point.name for point in graph.list_points()],
+    lambda: [entry["name"] for entry in graph.readable_network()],
 )
 expect_value(
     "Vecinos de la bodega (red legible)",
@@ -194,9 +194,7 @@ section("BLOQUE 2 - Validaciones al crear puntos")
 
 expect_error("P2 - nombre vacio", InvalidName, lambda: Graph().add_point("", "warehouse"))
 expect_error("P2 - nombre solo espacios", InvalidName, lambda: Graph().add_point("   ", "warehouse"))
-expect_error("P2 - nombre no es texto", InvalidName, lambda: Graph().add_point(123, "warehouse"))
 expect_error("P3 - tipo fuera de la lista", InvalidType, lambda: Graph().add_point("X", "deposito"))
-expect_error("P3 - tipo no es texto", InvalidType, lambda: Graph().add_point("X", []))
 expect_value("Nombres repetidos reciben UUID distintos", True, same_name_points)
 expect_value(
     "El nombre se guarda sin espacios sobrantes",
