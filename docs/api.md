@@ -108,6 +108,12 @@ Respuesta 200:
 
 Un punto sin conexiones salientes aparece con `"connections": []`. Con la red vacía devuelve `{ "points": [] }`.
 
+Implementación (T24, `backend/api/network.py`):
+
+- La respuesta se arma con `list_points()` y `list_connections()`, que devuelven los tipos `Point` y `Connection` ya fijados en este contrato. Así el endpoint no depende de la forma interna que tenga `readable_network()` en Python.
+- El costo se devuelve en notación decimal fija (`format(cost_km, "f")`), de modo que `Decimal("1E+1")` sale como `"10"`.
+- El endpoint toma la instancia del grafo de `app.extensions["graph"]`. **Convención para todos los endpoints:** `app.py` crea una sola instancia (`app.extensions["graph"] = Graph()`) cuando exista la clase `Graph` (T13), y cada endpoint la lee con `current_app.extensions["graph"]`. Mientras no se registre, `/network` responde 500 `INTERNAL_ERROR`.
+
 ## Errores
 
 Todos los errores tienen la misma forma:
