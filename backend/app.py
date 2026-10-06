@@ -53,5 +53,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.route("/points", methods=["POST"])
+def create_point():
+    try:
+        body = json_body()
+        name = body.get("name")
+        type_ = body.get("type")
+        if name is None or type_ is None:
+            raise MissingData("Los campos 'name' y 'type' son obligatorios.")
+        graph = app.extensions["graph"]
+        point = graph.add_point(name=name, type=type_)
+        return jsonify(point.to_dict()), 201
+    except _DOMAIN_EXCEPTIONS as exc:
+        return _error_response(exc)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
