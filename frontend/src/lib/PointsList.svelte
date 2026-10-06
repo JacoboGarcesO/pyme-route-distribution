@@ -1,29 +1,7 @@
 <script>
-  import { listPoints } from './api.js'
+  import { pointTypeLabel } from './pointTypes.js'
 
-  const TYPE_LABELS = {
-    warehouse: 'Bodega',
-    neighborhood: 'Barrio',
-    pickup_point: 'Punto de recogida',
-  }
-
-  let points = $state([])
-  let loading = $state(true)
-  let error = $state('')
-
-  async function load() {
-    loading = true
-    error = ''
-    try {
-      points = await listPoints()
-    } catch (e) {
-      error = e.message
-    } finally {
-      loading = false
-    }
-  }
-
-  load()
+  let { points, loading, error } = $props()
 </script>
 
 <section>
@@ -44,15 +22,13 @@
         {#each points as point (point.id)}
           <tr>
             <td>{point.name}</td>
-            <td>{TYPE_LABELS[point.type] ?? point.type}</td>
+            <td>{pointTypeLabel(point.type)}</td>
             <td><code>{point.id}</code></td>
           </tr>
         {/each}
       </tbody>
     </table>
   {/if}
-
-  <button type="button" onclick={load}>Actualizar</button>
 </section>
 
 <style>

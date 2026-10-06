@@ -1,6 +1,29 @@
 <script>
+  import { listPoints } from './lib/api.js'
   import BackendStatus from './lib/BackendStatus.svelte'
   import PointsList from './lib/PointsList.svelte'
+
+  let points = $state([])
+  let pointsLoading = $state(true)
+  let pointsError = $state('')
+
+  async function loadPoints() {
+    pointsLoading = true
+    pointsError = ''
+    try {
+      points = await listPoints()
+    } catch (error) {
+      pointsError = error.message
+    } finally {
+      pointsLoading = false
+    }
+  }
+
+  function refresh() {
+    loadPoints()
+  }
+
+  refresh()
 </script>
 
 <main>
@@ -10,7 +33,8 @@
     <BackendStatus />
   </header>
 
-  <PointsList />
+  <PointsList {points} loading={pointsLoading} error={pointsError} />
+  <button type="button" onclick={refresh}>Actualizar</button>
 </main>
 
 <style>
