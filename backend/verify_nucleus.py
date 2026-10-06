@@ -1,310 +1,212 @@
-"""
-T20 - Verificacion del nucleo en consola.
+"""T20: verify the graph core against the T11 example network.
 
-Carga la red de ejemplo de T11 (15 nodos, 28 aristas) y recorre casos
-validos e invalidos imprimiendo el resultado de cada uno.
-
-Ejecutar desde la carpeta backend/:
-    python verify_nucleus.py
+Run from the backend folder: python verify_nucleus.py
 """
 
 import sys
-from domain.graph import Graph
+from decimal import Decimal
+
 from domain.errors import (
-    InvalidName,
-    InvalidType,
-    OriginNotFound,
-    DestinationNotFound,
-    SelfLoop,
-    InvalidCost,
-    NonPositiveCost,
     CostPrecision,
+    DestinationNotFound,
     DuplicateConnection,
     InconsistentCost,
+    InvalidCost,
+    InvalidName,
+    InvalidType,
+    MissingData,
+    NonPositiveCost,
+    OriginNotFound,
+    PointNotFound,
+    SelfLoop,
 )
+from domain.graph import Graph
 
-PASS = "PASO"
-FAIL = "FALLO"
-_failures = 0
+# label, name, type. Street corners use "neighborhood" (T11 leaves their type open).
+NODES = [
+    ("BOD", "Bodega", "warehouse"),
+    ("C10K5", "C10K5", "neighborhood"),
+    ("C10K6", "C10K6", "neighborhood"),
+    ("C10K7", "C10K7", "neighborhood"),
+    ("C10K8", "C10K8", "neighborhood"),
+    ("C11K6", "C11K6", "neighborhood"),
+    ("C11K7", "C11K7", "neighborhood"),
+    ("C11K8", "C11K8", "neighborhood"),
+    ("C12K5", "C12K5", "neighborhood"),
+    ("C12K6", "C12K6", "neighborhood"),
+    ("C12K7", "C12K7", "neighborhood"),
+    ("C12K8", "C12K8", "neighborhood"),
+    ("CasaA", "Casa A", "pickup_point"),
+    ("CasaB", "Casa B", "pickup_point"),
+    ("CasaC", "Casa C", "pickup_point"),
+]
+
+# origin, destination, km: the 28 directed edges of docs/diseno.md (T11).
+EDGES = [
+    ("C10K5", "C10K6", "0.4"),
+    ("C10K6", "C10K5", "0.4"),
+    ("C10K6", "C10K7", "0.5"),
+    ("C10K7", "C10K8", "0.3"),
+    ("C10K8", "C10K7", "0.3"),
+    ("BOD", "C11K6", "0.4"),
+    ("C11K6", "BOD", "0.4"),
+    ("C11K6", "C11K7", "0.5"),
+    ("C11K7", "C11K6", "0.5"),
+    ("C11K8", "C11K7", "0.3"),
+    ("C12K5", "C12K6", "0.4"),
+    ("C12K6", "C12K7", "0.5"),
+    ("C12K7", "C12K8", "0.3"),
+    ("C10K5", "BOD", "0.3"),
+    ("BOD", "C10K5", "0.3"),
+    ("BOD", "C12K5", "0.2"),
+    ("C12K5", "BOD", "0.2"),
+    ("C10K6", "C11K6", "0.3"),
+    ("C11K6", "C12K6", "0.2"),
+    ("C10K7", "C11K7", "0.3"),
+    ("C11K7", "C10K7", "0.3"),
+    ("C11K7", "C12K7", "0.3"),
+    ("C12K7", "C11K7", "0.3"),
+    ("C11K8", "C10K8", "0.2"),
+    ("C12K8", "C11K8", "0.3"),
+    ("C11K6", "CasaA", "0.1"),
+    ("C12K6", "CasaC", "0.1"),
+    ("C12K8", "CasaB", "0.1"),
+]
+
+NOT_A_UUID = "no-es-un-uuid"
+UNKNOWN_UUID = "00000000-0000-0000-0000-000000000000"
+
+results = []
 
 
-def check(scenario, expected, fn):
-    global _failures
+def report(scenario, expected, obtained, passed):
+    print(f"[{'PASO' if passed else 'FALLO'}] {scenario}")
+    print(f"    esperado: {expected}")
+    print(f"    obtenido: {obtained}")
+    results.append(passed)
+
+
+def expect_value(scenario, expected, action):
     try:
-        result = fn()
-        if expected is None:
-            print(f"[{PASS}] {scenario}")
-            print(f"       esperado : exito")
-            print(f"       obtenido : {result}")
-        else:
-            print(f"[{FAIL}] {scenario}")
-            print(f"       esperado : {expected.__name__}")
-            print(f"       obtenido : exito inesperado")
-            _failures += 1
+        obtained = action()
     except Exception as exc:
-        if expected is not None and isinstance(exc, expected):
-            print(f"[{PASS}] {scenario}")
-            print(f"       esperado : {expected.__name__}")
-            print(f"       obtenido : {type(exc).__name__} - {exc}")
-        else:
-            label = expected.__name__ if expected else "exito"
-            print(f"[{FAIL}] {scenario}")
-            print(f"       esperado : {label}")
-            print(f"       obtenido : {type(exc).__name__} - {exc}")
-            _failures += 1
+        report(scenario, expected, f"{type(exc).__name__}: {exc}", False)
+        return
+    report(scenario, expected, obtained, obtained == expected)
+
+
+def expect_error(scenario, error_type, action):
+    try:
+        action()
+    except Exception as exc:
+        obtained = f"{type(exc).__name__}: {exc}"
+        report(scenario, error_type.__name__, obtained, type(exc) is error_type)
+        return
+    report(scenario, error_type.__name__, "no hubo error", False)
+
+
+def section(title):
     print()
+    print("=" * 60)
+    print(title)
+    print("=" * 60)
 
 
-# ---------------------------------------------------------------------------
-# Construccion de la red T11
-# ---------------------------------------------------------------------------
-
-def build_t11_network():
-    g = Graph()
-
-    # --- nodos ---
-    # Las esquinas no tienen un tipo natural en la lista cerrada;
-    # se registran como 'neighborhood' segun la decision pendiente de T11.
-    BOD    = g.add_point("Bodega",   "warehouse")
-    C10K5  = g.add_point("C10K5",    "neighborhood")
-    C10K6  = g.add_point("C10K6",    "neighborhood")
-    C10K7  = g.add_point("C10K7",    "neighborhood")
-    C10K8  = g.add_point("C10K8",    "neighborhood")
-    C11K6  = g.add_point("C11K6",    "neighborhood")
-    C11K7  = g.add_point("C11K7",    "neighborhood")
-    C11K8  = g.add_point("C11K8",    "neighborhood")
-    C12K5  = g.add_point("C12K5",    "neighborhood")
-    C12K6  = g.add_point("C12K6",    "neighborhood")
-    C12K7  = g.add_point("C12K7",    "neighborhood")
-    C12K8  = g.add_point("C12K8",    "neighborhood")
-    CasaA  = g.add_point("Casa A",   "pickup_point")
-    CasaB  = g.add_point("Casa B",   "pickup_point")
-    CasaC  = g.add_point("Casa C",   "pickup_point")
-
-    ids = {
-        "BOD": BOD, "C10K5": C10K5, "C10K6": C10K6, "C10K7": C10K7,
-        "C10K8": C10K8, "C11K6": C11K6, "C11K7": C11K7, "C11K8": C11K8,
-        "C12K5": C12K5, "C12K6": C12K6, "C12K7": C12K7, "C12K8": C12K8,
-        "CasaA": CasaA, "CasaB": CasaB, "CasaC": CasaC,
-    }
-
-    # --- aristas (28 segun T11) ---
-    edges = [
-        ("C10K5",  "C10K6",  "0.4"),
-        ("C10K6",  "C10K5",  "0.4"),
-        ("C10K6",  "C10K7",  "0.5"),
-        ("C10K7",  "C10K8",  "0.3"),
-        ("C10K8",  "C10K7",  "0.3"),
-        ("BOD",    "C11K6",  "0.4"),
-        ("C11K6",  "BOD",    "0.4"),
-        ("C11K6",  "C11K7",  "0.5"),
-        ("C11K7",  "C11K6",  "0.5"),
-        ("C11K8",  "C11K7",  "0.3"),
-        ("C12K5",  "C12K6",  "0.4"),
-        ("C12K6",  "C12K7",  "0.5"),
-        ("C12K7",  "C12K8",  "0.3"),
-        ("C10K5",  "BOD",    "0.3"),
-        ("BOD",    "C10K5",  "0.3"),
-        ("BOD",    "C12K5",  "0.2"),
-        ("C12K5",  "BOD",    "0.2"),
-        ("C10K6",  "C11K6",  "0.3"),
-        ("C11K6",  "C12K6",  "0.2"),
-        ("C10K7",  "C11K7",  "0.3"),
-        ("C11K7",  "C10K7",  "0.3"),
-        ("C11K7",  "C12K7",  "0.3"),
-        ("C12K7",  "C11K7",  "0.3"),
-        ("C11K8",  "C10K8",  "0.2"),
-        ("C12K8",  "C11K8",  "0.3"),
-        ("C11K6",  "CasaA",  "0.1"),
-        ("C12K6",  "CasaC",  "0.1"),
-        ("C12K8",  "CasaB",  "0.1"),
-    ]
-
-    for origin, dest, cost in edges:
-        g.add_connection(
-            str(ids[origin].id),
-            str(ids[dest].id),
-            cost,
-        )
-
-    return g, ids
+def build_t11():
+    graph = Graph()
+    points = {label: graph.add_point(name, kind) for label, name, kind in NODES}
+    ids = {label: str(point.id) for label, point in points.items()}
+    for origin, destination, km in EDGES:
+        graph.add_connection(ids[origin], ids[destination], km)
+    return graph, points, ids
 
 
-# ---------------------------------------------------------------------------
-# Bloque 1 - Casos validos: cargar la red T11
-# ---------------------------------------------------------------------------
+def network_entry(graph, point_id):
+    return next(e for e in graph.readable_network() if e["id"] == str(point_id))
 
-print("=" * 60)
-print("BLOQUE 1 - Carga de la red T11")
-print("=" * 60)
-print()
 
-g, ids = build_t11_network()
+def two_points():
+    graph = Graph()
+    a = graph.add_point("A", "warehouse")
+    b = graph.add_point("B", "neighborhood")
+    return graph, str(a.id), str(b.id)
 
-check(
-    "Red T11 cargada: 15 puntos",
-    None,
-    lambda: f"{len(g.list_points())} puntos registrados",
+
+def stored_cost(text):
+    graph, a, b = two_points()
+    return graph.add_connection(a, b, text).to_dict()["cost_km"]
+
+
+def same_name_points():
+    graph = Graph()
+    first = graph.add_point("Norte", "neighborhood")
+    second = graph.add_point("Norte", "neighborhood")
+    return first.id != second.id
+
+
+# --- block 1: valid scenarios on the T11 network ---------------------------
+
+section("BLOQUE 1 - Red T11 y consultas")
+graph, points, ids = build_t11()
+
+expect_value("Red vacia: sin puntos", [], lambda: Graph().list_points())
+expect_value("Red vacia: sin conexiones", [], lambda: Graph().list_connections())
+expect_value("Red vacia: red legible vacia", [], lambda: Graph().readable_network())
+expect_value("T11: 15 puntos", 15, lambda: len(graph.list_points()))
+expect_value("T11: 28 conexiones", 28, lambda: len(graph.list_connections()))
+expect_value(
+    "Puntos en orden estable (por nombre)",
+    ["Bodega", "C10K5", "C10K6", "C10K7", "C10K8", "C11K6", "C11K7", "C11K8",
+     "C12K5", "C12K6", "C12K7", "C12K8", "Casa A", "Casa B", "Casa C"],
+    lambda: [point.name for point in graph.list_points()],
+)
+expect_value(
+    "Vecinos de la bodega (red legible)",
+    ["C10K5", "C11K6", "C12K5"],
+    lambda: [c["destination_name"] for c in network_entry(graph, ids["BOD"])["connections"]],
+)
+expect_value(
+    "Costo Bodega -> C11K6",
+    Decimal("0.4"),
+    lambda: graph.neighbors(ids["BOD"])[points["C11K6"].id],
+)
+expect_value(
+    "Sentido unico: existe C10K6 -> C10K7",
+    True,
+    lambda: points["C10K7"].id in graph.neighbors(ids["C10K6"]),
+)
+expect_value(
+    "Sentido unico: no existe C10K7 -> C10K6",
+    False,
+    lambda: points["C10K6"].id in graph.neighbors(ids["C10K7"]),
+)
+expect_value(
+    "Una casa destino no tiene conexiones salientes",
+    [],
+    lambda: network_entry(graph, ids["CasaA"])["connections"],
+)
+expect_error("Vecinos: UUID con formato invalido", PointNotFound, lambda: graph.neighbors(NOT_A_UUID))
+expect_error("Vecinos: punto inexistente", PointNotFound, lambda: graph.neighbors(UNKNOWN_UUID))
+
+# --- block 2: points (P2, P3) ----------------------------------------------
+
+section("BLOQUE 2 - Validaciones al crear puntos")
+
+expect_error("P2 - nombre vacio", InvalidName, lambda: Graph().add_point("", "warehouse"))
+expect_error("P2 - nombre solo espacios", InvalidName, lambda: Graph().add_point("   ", "warehouse"))
+expect_error("P2 - nombre no es texto", InvalidName, lambda: Graph().add_point(123, "warehouse"))
+expect_error("P3 - tipo fuera de la lista", InvalidType, lambda: Graph().add_point("X", "deposito"))
+expect_error("P3 - tipo no es texto", InvalidType, lambda: Graph().add_point("X", []))
+expect_value("Nombres repetidos reciben UUID distintos", True, same_name_points)
+expect_value(
+    "El nombre se guarda sin espacios sobrantes",
+    "Norte",
+    lambda: Graph().add_point("  Norte  ", "neighborhood").name,
 )
 
-check(
-    "Red T11 cargada: 28 conexiones",
-    None,
-    lambda: f"{len(g.list_connections())} conexiones registradas",
-)
+# --- block 3: connections (added in the next step) -------------------------
 
-check(
-    "Vecinos salientes de BOD",
-    None,
-    lambda: g.neighbors(str(ids["BOD"].id)),
-)
-
-check(
-    "Red legible devuelve 15 entradas",
-    None,
-    lambda: f"{len(g.readable_network())} entradas en la red legible",
-)
-
-# ---------------------------------------------------------------------------
-# Bloque 2 - Rechazos al crear puntos (P1, P2, P3)
-# ---------------------------------------------------------------------------
-
-print("=" * 60)
-print("BLOQUE 2 - Validaciones al crear puntos")
-print("=" * 60)
-print()
-
-check(
-    "P2 - nombre vacio",
-    InvalidName,
-    lambda: g.add_point("", "warehouse"),
-)
-
-check(
-    "P2 - nombre solo espacios",
-    InvalidName,
-    lambda: g.add_point("   ", "neighborhood"),
-)
-
-check(
-    "P3 - tipo no permitido",
-    InvalidType,
-    lambda: g.add_point("Punto nuevo", "deposito"),
-)
-
-# ---------------------------------------------------------------------------
-# Bloque 3 - Rechazos al crear conexiones (C2 a C9)
-# ---------------------------------------------------------------------------
-
-print("=" * 60)
-print("BLOQUE 3 - Validaciones al crear conexiones")
-print("=" * 60)
-print()
-
-FAKE_UUID = "00000000-0000-0000-0000-000000000000"
-bod_id  = str(ids["BOD"].id)
-c10k5_id = str(ids["C10K5"].id)
-c10k6_id = str(ids["C10K6"].id)
-
-check(
-    "C2 - UUID de origen con formato invalido",
-    OriginNotFound,
-    lambda: g.add_connection("no-es-un-uuid", c10k5_id, "1.0"),
-)
-
-check(
-    "C2 - origen inexistente (UUID valido pero no registrado)",
-    OriginNotFound,
-    lambda: g.add_connection(FAKE_UUID, c10k5_id, "1.0"),
-)
-
-check(
-    "C3 - UUID de destino con formato invalido",
-    DestinationNotFound,
-    lambda: g.add_connection(bod_id, "tampoco-es-uuid", "1.0"),
-)
-
-check(
-    "C3 - destino inexistente (UUID valido pero no registrado)",
-    DestinationNotFound,
-    lambda: g.add_connection(bod_id, FAKE_UUID, "1.0"),
-)
-
-check(
-    "C4 - auto-lazo (origen == destino)",
-    SelfLoop,
-    lambda: g.add_connection(bod_id, bod_id, "1.0"),
-)
-
-check(
-    "C5 - costo enviado como numero JSON en lugar de texto",
-    InvalidCost,
-    lambda: g.add_connection(bod_id, c10k5_id, 4.5),
-)
-
-check(
-    "C5 - costo con letras",
-    InvalidCost,
-    lambda: g.add_connection(bod_id, c10k5_id, "cuatro"),
-)
-
-check(
-    "C5 - costo infinito",
-    InvalidCost,
-    lambda: g.add_connection(bod_id, c10k5_id, "Infinity"),
-)
-
-check(
-    "C6 - costo cero",
-    NonPositiveCost,
-    lambda: g.add_connection(bod_id, c10k5_id, "0"),
-)
-
-check(
-    "C6 - costo negativo",
-    NonPositiveCost,
-    lambda: g.add_connection(bod_id, c10k5_id, "-1.5"),
-)
-
-check(
-    "C7 - costo con mas de 7 decimales",
-    CostPrecision,
-    lambda: g.add_connection(bod_id, c10k5_id, "0.12345678"),
-)
-
-check(
-    "C8 - conexion duplicada (mismo sentido)",
-    DuplicateConnection,
-    lambda: g.add_connection(bod_id, c10k6_id, "0.4"),
-)
-
-# Para C9 necesitamos un par sin conexion inversa aun; usamos C10K6->C10K7
-# que es de un solo sentido: existe C10K6->C10K7 (0.5) pero no C10K7->C10K6.
-c10k7_id = str(ids["C10K7"].id)
-check(
-    "C9 - conexion inversa con costo distinto",
-    InconsistentCost,
-    lambda: g.add_connection(c10k7_id, c10k6_id, "9.9"),
-)
-
-check(
-    "C9 ok - conexion inversa con el mismo costo (debe aceptarse)",
-    None,
-    lambda: g.add_connection(c10k7_id, c10k6_id, "0.5"),
-)
-
-# ---------------------------------------------------------------------------
-# Resumen
-# ---------------------------------------------------------------------------
-
-print("=" * 60)
-total = 18
-passed = total - _failures
-print(f"Resultado: {passed}/{total} casos pasaron")
-if _failures == 0:
-    print("Todo el nucleo verifica correctamente.")
-else:
-    print(f"{_failures} caso(s) fallaron.")
-print("=" * 60)
-
-sys.exit(0 if _failures == 0 else 1)
+section("RESUMEN")
+passed = sum(results)
+print(f"{passed}/{len(results)} escenarios pasaron")
+sys.exit(0 if passed == len(results) else 1)
