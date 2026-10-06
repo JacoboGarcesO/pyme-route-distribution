@@ -2,6 +2,7 @@ import uuid
 from decimal import Decimal, InvalidOperation
 
 from domain.errors import (
+    MissingData,
     InvalidName,
     InvalidType,
     OriginNotFound,
@@ -63,6 +64,15 @@ class Graph:
         return point
 
     @staticmethod
+    def _parse_uuid(value):
+        if isinstance(value, uuid.UUID):
+            return value
+        try:
+            return uuid.UUID(str(value))
+        except ValueError:
+            return None
+
+    @staticmethod
     def _sort_key(point):
         return (point.name.casefold(), str(point.id))
 
@@ -70,20 +80,18 @@ class Graph:
         return sorted(self._points.values(), key=self._sort_key)
 
     def add_connection(self, origin_id_str, destination_id_str, cost_km_str):
+        # C1: required data must be present
+        if origin_id_str is None or destination_id_str is None or cost_km_str is None:
+            raise MissingData("Faltan datos: origin_id, destination_id y cost_km son obligatorios.")
+
         # C2: origin must exist
-        try:
-            origin_id = uuid.UUID(str(origin_id_str))
-        except (ValueError, AttributeError):
-            raise OriginNotFound(f"El punto de origen '{origin_id_str}' no existe.")
-        if origin_id not in self._points:
+        origin_id = self._parse_uuid(origin_id_str)
+        if origin_id is None or origin_id not in self._points:
             raise OriginNotFound(f"El punto de origen '{origin_id_str}' no existe.")
 
         # C3: destination must exist
-        try:
-            destination_id = uuid.UUID(str(destination_id_str))
-        except (ValueError, AttributeError):
-            raise DestinationNotFound(f"El punto de destino '{destination_id_str}' no existe.")
-        if destination_id not in self._points:
+        destination_id = self._parse_uuid(destination_id_str)
+        if destination_id is None or destination_id not in self._points:
             raise DestinationNotFound(f"El punto de destino '{destination_id_str}' no existe.")
 
         # C4: no self-loop
