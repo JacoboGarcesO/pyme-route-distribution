@@ -204,7 +204,53 @@ expect_value(
     lambda: Graph().add_point("  Norte  ", "neighborhood").name,
 )
 
-# --- block 3: connections (added in the next step) -------------------------
+# --- block 3: connections (C1 to C9) ---------------------------------------
+
+section("BLOQUE 3 - Validaciones al crear conexiones")
+
+
+def connect(origin, destination, cost):
+    return lambda: graph.add_connection(origin, destination, cost)
+
+
+bod, c10k5, c10k6, c10k7 = ids["BOD"], ids["C10K5"], ids["C10K6"], ids["C10K7"]
+
+expect_error("C1 - falta el origen", MissingData, connect(None, c10k5, "1"))
+expect_error("C1 - falta el destino", MissingData, connect(bod, None, "1"))
+expect_error("C1 - falta el costo", MissingData, connect(bod, c10k5, None))
+expect_error("C2 - UUID de origen con formato invalido", OriginNotFound, connect(NOT_A_UUID, c10k5, "1"))
+expect_error("C2 - origen inexistente", OriginNotFound, connect(UNKNOWN_UUID, c10k5, "1"))
+expect_error("C3 - UUID de destino con formato invalido", DestinationNotFound, connect(bod, NOT_A_UUID, "1"))
+expect_error("C3 - destino inexistente", DestinationNotFound, connect(bod, UNKNOWN_UUID, "1"))
+expect_error("C4 - auto-lazo", SelfLoop, connect(bod, bod, "1"))
+expect_error("C5 - costo como numero JSON", InvalidCost, connect(bod, c10k5, 4.5))
+expect_error("C5 - costo con letras", InvalidCost, connect(bod, c10k5, "cuatro"))
+expect_error("C5 - costo vacio", InvalidCost, connect(bod, c10k5, ""))
+expect_error("C5 - costo infinito", InvalidCost, connect(bod, c10k5, "Infinity"))
+expect_error("C5 - costo NaN", InvalidCost, connect(bod, c10k5, "NaN"))
+expect_error("C5 - notacion cientifica", InvalidCost, connect(bod, c10k5, "1e999999999"))
+expect_error("C5 - guion bajo en el numero", InvalidCost, connect(bod, c10k5, "1_0"))
+expect_error("C6 - costo cero", NonPositiveCost, connect(bod, c10k5, "0"))
+expect_error("C6 - costo negativo", NonPositiveCost, connect(bod, c10k5, "-1.5"))
+expect_error("C7 - mas de 7 decimales", CostPrecision, connect(bod, c10k5, "0.12345678"))
+expect_error("Orden: C2 antes que el costo", OriginNotFound, connect(NOT_A_UUID, c10k5, "cuatro"))
+expect_error("Orden: C4 antes que el costo", SelfLoop, connect(bod, bod, "cuatro"))
+expect_error("C8 - duplicada (mismo sentido y costo)", DuplicateConnection, connect(bod, ids["C11K6"], "0.4"))
+expect_error("C8 - duplicada aunque cambie el costo", DuplicateConnection, connect(bod, ids["C11K6"], "0.9"))
+expect_error("C9 - inversa con costo distinto", InconsistentCost, connect(c10k7, c10k6, "9.9"))
+expect_value(
+    "C9 - inversa con el mismo costo se acepta",
+    Decimal("0.5"),
+    lambda: graph.add_connection(c10k7, c10k6, "0.5").cost_km,
+)
+expect_value(
+    "Los rechazos no modificaron la red (28 + 1 aceptada)",
+    29,
+    lambda: len(graph.list_connections()),
+)
+expect_value("Costo con 7 decimales se acepta", "0.1234567", lambda: stored_cost("0.1234567"))
+expect_value("Costo muy pequeno sale en notacion fija", "0.0000001", lambda: stored_cost("0.0000001"))
+expect_value("Costo entero", "3", lambda: stored_cost("3"))
 
 section("RESUMEN")
 passed = sum(results)
