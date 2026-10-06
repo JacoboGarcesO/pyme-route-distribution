@@ -62,8 +62,12 @@ class Graph:
         self._adjacency[point_id] = {}
         return point
 
+    @staticmethod
+    def _sort_key(point):
+        return (point.name.casefold(), str(point.id))
+
     def list_points(self):
-        return list(self._points.values())
+        return sorted(self._points.values(), key=self._sort_key)
 
     def add_connection(self, origin_id_str, destination_id_str, cost_km_str):
         # C2: origin must exist
