@@ -148,14 +148,22 @@ class Graph:
         self._adjacency[origin_id][destination_id] = cost
         return Connection(origin_id=origin_id, destination_id=destination_id, cost_km=cost)
 
+    def _outgoing(self, origin_id):
+        destinations = sorted(
+            (self._points[dest_id] for dest_id in self._adjacency[origin_id]),
+            key=self._sort_key,
+        )
+        return [
+            Connection(origin_id, dest.id, self._adjacency[origin_id][dest.id])
+            for dest in destinations
+        ]
+
     def list_connections(self):
-        result = []
-        for origin_id, destinations in self._adjacency.items():
-            for dest_id, cost in destinations.items():
-                result.append(
-                    Connection(origin_id=origin_id, destination_id=dest_id, cost_km=cost)
-                )
-        return result
+        return [
+            connection
+            for point in self.list_points()
+            for connection in self._outgoing(point.id)
+        ]
 
     def neighbors(self, point_id_str):
         try:
