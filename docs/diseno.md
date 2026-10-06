@@ -335,3 +335,39 @@ No hay documentación interactiva automática. La referencia de la API es `docs/
 ### Esqueleto
 
 `backend/app.py` crea la aplicación y expone `GET /health`, que responde `{"status": "ok"}` con código 200.
+
+---
+
+## T26 · Tecnología del frontend
+
+### Decisión
+
+La interfaz es una **aplicación web con Svelte 5 y Vite** (carpeta `frontend/`), que consume el backend Flask real.
+
+### Alternativas comparadas
+
+| Criterio | Streamlit | Web (Svelte + Vite) |
+|---|---|---|
+| Lenguaje | Python, igual que el backend | JavaScript |
+| Velocidad para una primera pantalla | Muy alta | Media |
+| Control de la interfaz y de los mensajes de error | Limitado a sus componentes | Total |
+| Separación frontend / backend | Tentación de llamar al núcleo directamente desde Python | Solo puede hablar con la API por HTTP |
+| Visualización de la red en F4 | Componentes propios o imágenes | Libre (SVG, imagen generada por el backend con NetworkX) |
+
+### Justificación
+
+- **La regla 3 de la guía exige consumir el backend real.** Con un frontend web es imposible saltarse la API: toda la información llega por HTTP, como en la demo con el despachador.
+- **Errores comprensibles.** El contrato devuelve `{"error": {"code", "message"}}`. El cliente `src/lib/api.js` convierte cualquier error en un mensaje para el coordinador, incluido el caso de backend apagado (T28).
+- **Crece hacia F4.** La vista de red y resultados de ruta necesitará control de la presentación que en Streamlit es más difícil.
+
+### Conexión con el backend
+
+En desarrollo, Vite reenvía `/health`, `/points`, `/connections` y `/network` al backend (por defecto `http://127.0.0.1:5000`, configurable con la variable `API_URL`). El navegador ve un solo origen, así que no hace falta CORS en Flask.
+
+### Limitación aceptada
+
+El equipo necesita Node.js además de Python, y el proxy solo existe en el servidor de desarrollo de Vite. Para F1 la demo se hace con `npm run dev`.
+
+### Pantalla inicial
+
+Muestra el estado del backend (`GET /health`) y la tabla de puntos (`GET /points`). Ningún dato está escrito a mano: todo viene de la API.
