@@ -42,3 +42,27 @@ export async function listPoints() {
   const body = await request('/points')
   return body.points
 }
+
+export function createPoint(name, type) {
+  return request('/points', {
+    method: 'POST',
+    body: JSON.stringify({ name, type }),
+  })
+}
+
+// cost_km viaja como texto decimal (por ejemplo "4.5"), nunca como número.
+export function createConnection(originId, destinationId, costKm) {
+  return request('/connections', {
+    method: 'POST',
+    body: JSON.stringify({
+      origin_id: originId,
+      destination_id: destinationId,
+      cost_km: costKm,
+    }),
+  })
+}
+
+export async function getNetwork() {
+  const body = await request('/network')
+  return body.points
+}
