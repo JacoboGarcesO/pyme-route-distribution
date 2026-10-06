@@ -84,6 +84,9 @@ class Graph:
         return (point.name.casefold(), str(point.id))
 
     def list_points(self):
+        return list(self._points.values())
+
+    def _sorted_points(self):
         return sorted(self._points.values(), key=self._sort_key)
 
     def add_connection(self, origin_id_str, destination_id_str, cost_km_str):
@@ -162,7 +165,7 @@ class Graph:
     def list_connections(self):
         return [
             connection
-            for point in self.list_points()
+            for point in self._sorted_points()
             for connection in self._outgoing(point.id)
         ]
 
@@ -186,5 +189,5 @@ class Graph:
                     for c in self._outgoing(point.id)
                 ],
             }
-            for point in self.list_points()
+            for point in self._sorted_points()
         ]
