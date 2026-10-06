@@ -41,3 +41,23 @@ class Connection:
             "destination_id": str(self.destination_id),
             "cost_km": str(self.cost_km),
         }
+
+
+class Graph:
+    def __init__(self):
+        self._points = {}     # {UUID: Point}
+        self._adjacency = {}  # {UUID: {UUID: Decimal}}
+
+    def add_point(self, name, type):
+        if not name or not str(name).strip():
+            raise InvalidName("El nombre del punto no puede estar vacío.")
+        if type not in VALID_TYPES:
+            raise InvalidType(
+                f"El tipo '{type}' no es válido. "
+                "Tipos permitidos: warehouse, neighborhood, pickup_point."
+            )
+        point_id = uuid.uuid4()
+        point = Point(id=point_id, name=str(name).strip(), type=type)
+        self._points[point_id] = point
+        self._adjacency[point_id] = {}
+        return point
