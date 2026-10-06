@@ -302,3 +302,36 @@ En total hay 15 nodos y 28 aristas dirigidas.
 - **Destino no alcanzable (F2).** En este mapa todas las casas destino se alcanzan desde la bodega. Para probar "destino desconectado" hará falta agregar un punto aislado o quitar una arista en la demostración.
 - **"Menos saltos no es menor costo" (F3).** Los costos actuales no muestran todavía un caso claro de dos rutas con distinto número de saltos y distinto costo. Se debe ajustar algún peso antes de F3.
 - **Tipo de cada nodo.** La lista cerrada de T09 es `warehouse`, `neighborhood` y `pickup_point`. La bodega es `warehouse` y las casas destino encajan como `pickup_point`, pero las esquinas no tienen un tipo claro. Hay que decidir cómo clasificarlas.
+
+---
+
+## T21 · Framework de la API
+
+### Decisión
+
+La API REST se implementa con **Flask** (versión fijada en `backend/requirements.txt`).
+
+### Alternativas comparadas
+
+| Criterio | Flask | FastAPI |
+|---|---|---|
+| Curva de aprendizaje | Baja: rutas y funciones simples | Media: tipos, modelos Pydantic, asincronía |
+| Validación de entrada | Manual | Automática con modelos Pydantic |
+| Documentación automática | No | Sí (OpenAPI / Swagger) |
+| Control del formato de error | Total, con un solo manejador de errores | Hay que reemplazar el formato por defecto de Pydantic (422 con su propia estructura) |
+| Dependencias | Pocas | Más (Pydantic, Starlette, servidor ASGI) |
+
+### Justificación
+
+- **Las reglas viven en el núcleo, no en el framework.** T09 decide que toda validación la hace la clase `Graph` (P1–P4, C1–C10) para que ninguna vía de entrada corrompa la red. La validación automática de FastAPI duplicaría esas reglas en dos lugares y podría responder antes que el núcleo con otro formato y otro código.
+- **El contrato de errores es propio.** `api.md` fija una forma única `{"error": {"code", "message"}}` y códigos HTTP específicos (400, 404, 409, 422). Con Flask basta un manejador que traduzca las excepciones del núcleo (T25); con FastAPI habría que desactivar o sobrescribir su respuesta 422 por defecto.
+- **El costo es texto decimal.** `cost_km` se recibe como texto y se convierte a `Decimal` en el núcleo. No se gana nada con el tipado automático de FastAPI.
+- **Alcance pequeño.** F1 tiene seis endpoints síncronos y sin autenticación; la asincronía y la documentación automática no aportan valor suficiente para el costo de aprenderlas.
+
+### Limitación aceptada
+
+No hay documentación interactiva automática. La referencia de la API es `docs/api.md`, y el script de aceptación comprueba que el backend la cumple.
+
+### Esqueleto
+
+`backend/app.py` crea la aplicación y expone `GET /health`, que responde `{"status": "ok"}` con código 200.
