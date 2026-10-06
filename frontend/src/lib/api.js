@@ -11,6 +11,8 @@ export class ApiError extends Error {
   }
 }
 
+const BACKEND_UNAVAILABLE = 'No se pudo conectar con el backend. ¿Está en ejecución?'
+
 async function request(path, options = {}) {
   let response
   try {
@@ -19,12 +21,17 @@ async function request(path, options = {}) {
       headers: { 'Content-Type': 'application/json', ...options.headers },
     })
   } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', 'No se pudo conectar con el backend. ¿Está en ejecución?')
+    throw new ApiError(0, 'NETWORK_ERROR', BACKEND_UNAVAILABLE)
   }
 
   const body = await response.json().catch(() => null)
   if (!response.ok) {
     const error = body?.error
+    // Con el backend apagado, el proxy de Vite responde 5xx sin el formato
+    // de error del contrato: se informa como backend no disponible.
+    if (!error && response.status >= 500) {
+      throw new ApiError(response.status, 'NETWORK_ERROR', BACKEND_UNAVAILABLE)
+    }
     throw new ApiError(
       response.status,
       error?.code ?? 'UNKNOWN_ERROR',
