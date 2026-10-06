@@ -1,5 +1,6 @@
+import re
 import uuid
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from domain.errors import (
     MissingData,
@@ -18,6 +19,7 @@ from domain.errors import (
 
 VALID_TYPES = frozenset({"warehouse", "neighborhood", "pickup_point"})
 MAX_DECIMAL_PLACES = 7
+PLAIN_DECIMAL = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)", re.ASCII)
 
 
 def format_cost(cost_km):
@@ -108,12 +110,11 @@ class Graph:
             raise InvalidCost(
                 "El costo debe enviarse como texto decimal (por ejemplo, \"4.5\")."
             )
-        try:
-            cost = Decimal(cost_km_str)
-        except InvalidOperation:
+        # Plain digits only: Decimal() alone also accepts "1e999999999" (which makes
+        # formatting allocate a gigantic string), "1_0", "NaN" and non-ASCII digits.
+        if not PLAIN_DECIMAL.fullmatch(cost_km_str):
             raise InvalidCost(f"El costo '{cost_km_str}' no es un número decimal válido.")
-        if not cost.is_finite():
-            raise InvalidCost(f"El costo '{cost_km_str}' no es un número decimal válido.")
+        cost = Decimal(cost_km_str)
 
         # C6: must be positive
         if cost <= 0:
