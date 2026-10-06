@@ -61,3 +61,6 @@ class Graph:
         self._points[point_id] = point
         self._adjacency[point_id] = {}
         return point
+
+    def list_points(self):
+        return list(self._points.values())
