@@ -20,6 +20,11 @@ VALID_TYPES = frozenset({"warehouse", "neighborhood", "pickup_point"})
 MAX_DECIMAL_PLACES = 7
 
 
+def format_cost(cost_km):
+    # str(Decimal("1E+1")) gives "1E+1"; the contract requires fixed notation.
+    return format(cost_km, "f")
+
+
 class Point:
     def __init__(self, id, name, type):
         self.id = id
@@ -40,7 +45,7 @@ class Connection:
         return {
             "origin_id": str(self.origin_id),
             "destination_id": str(self.destination_id),
-            "cost_km": str(self.cost_km),
+            "cost_km": format_cost(self.cost_km),
         }
 
 
