@@ -173,20 +173,17 @@ class Graph:
         return {c.destination_id: c.cost_km for c in self._outgoing(parsed_id)}
 
     def readable_network(self):
-        result = []
-        for point_id, point in self._points.items():
-            connections = [
-                {
-                    "destination_id": str(dest_id),
-                    "destination_name": self._points[dest_id].name,
-                    "cost_km": str(cost),
-                }
-                for dest_id, cost in self._adjacency.get(point_id, {}).items()
-            ]
-            result.append({
-                "id": str(point_id),
-                "name": point.name,
-                "type": point.type,
-                "connections": connections,
-            })
-        return result
+        return [
+            {
+                **point.to_dict(),
+                "connections": [
+                    {
+                        "destination_id": str(c.destination_id),
+                        "destination_name": self._points[c.destination_id].name,
+                        "cost_km": format_cost(c.cost_km),
+                    }
+                    for c in self._outgoing(point.id)
+                ],
+            }
+            for point in self.list_points()
+        ]
