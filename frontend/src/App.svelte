@@ -1,6 +1,7 @@
 <script>
   import { listPoints } from './lib/api.js'
   import BackendStatus from './lib/BackendStatus.svelte'
+  import PointForm from './lib/PointForm.svelte'
   import PointsList from './lib/PointsList.svelte'
 
   let points = $state([])
@@ -32,6 +33,8 @@
     <p>Red operativa de puntos y trayectos</p>
     <BackendStatus />
   </header>
+
+  <PointForm onCreated={refresh} />
 
   <PointsList {points} loading={pointsLoading} error={pointsError} />
   <button type="button" onclick={refresh}>Actualizar</button>
