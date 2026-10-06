@@ -143,7 +143,7 @@ class Graph:
             origin_name = self._points[origin_id].name
             raise InconsistentCost(
                 f"Ya existe la conexión de '{dest_name}' a '{origin_name}' con un costo de "
-                f"{reverse_cost} km; el costo en ambos sentidos debe coincidir."
+                f"{format_cost(reverse_cost)} km; el costo en ambos sentidos debe coincidir."
             )
 
         self._adjacency[origin_id][destination_id] = cost
