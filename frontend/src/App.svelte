@@ -1,6 +1,7 @@
 <script>
   import { listPoints } from './lib/api.js'
   import BackendStatus from './lib/BackendStatus.svelte'
+  import ConnectionForm from './lib/ConnectionForm.svelte'
   import PointForm from './lib/PointForm.svelte'
   import PointsList from './lib/PointsList.svelte'
 
@@ -35,6 +36,7 @@
   </header>
 
   <PointForm onCreated={refresh} />
+  <ConnectionForm {points} onCreated={refresh} />
 
   <PointsList {points} loading={pointsLoading} error={pointsError} />
   <button type="button" onclick={refresh}>Actualizar</button>
