@@ -68,5 +68,11 @@ def create_point():
         return _error_response(exc)
 
 
+@app.route("/points", methods=["GET"])
+def list_points():
+    graph = app.extensions["graph"]
+    return jsonify({"points": [p.to_dict() for p in graph.list_points()]})
+
+
 if __name__ == "__main__":
     app.run(debug=True)
