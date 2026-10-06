@@ -64,3 +64,69 @@ class Graph:
 
     def list_points(self):
         return list(self._points.values())
+
+    def add_connection(self, origin_id_str, destination_id_str, cost_km_str):
+        # C2: origin must exist
+        try:
+            origin_id = uuid.UUID(str(origin_id_str))
+        except (ValueError, AttributeError):
+            raise OriginNotFound(f"El punto de origen '{origin_id_str}' no existe.")
+        if origin_id not in self._points:
+            raise OriginNotFound(f"El punto de origen '{origin_id_str}' no existe.")
+
+        # C3: destination must exist
+        try:
+            destination_id = uuid.UUID(str(destination_id_str))
+        except (ValueError, AttributeError):
+            raise DestinationNotFound(f"El punto de destino '{destination_id_str}' no existe.")
+        if destination_id not in self._points:
+            raise DestinationNotFound(f"El punto de destino '{destination_id_str}' no existe.")
+
+        # C4: no self-loop
+        if origin_id == destination_id:
+            raise SelfLoop("El origen y el destino deben ser distintos.")
+
+        # C5: cost must be a decimal string
+        if not isinstance(cost_km_str, str):
+            raise InvalidCost(
+                "El costo debe enviarse como texto decimal (por ejemplo, \"4.5\")."
+            )
+        try:
+            cost = Decimal(cost_km_str)
+        except InvalidOperation:
+            raise InvalidCost(f"El costo '{cost_km_str}' no es un número decimal válido.")
+        if not cost.is_finite():
+            raise InvalidCost(f"El costo '{cost_km_str}' no es un número decimal válido.")
+
+        # C6: must be positive
+        if cost <= 0:
+            raise NonPositiveCost("El costo debe ser mayor que 0 km.")
+
+        # C7: at most 7 decimal places
+        _, _, exponent = cost.as_tuple()
+        decimal_places = -exponent if exponent < 0 else 0
+        if decimal_places > MAX_DECIMAL_PLACES:
+            raise CostPrecision(
+                f"El costo no puede tener más de {MAX_DECIMAL_PLACES} decimales."
+            )
+
+        # C8: no duplicate connection
+        if destination_id in self._adjacency.get(origin_id, {}):
+            origin_name = self._points[origin_id].name
+            dest_name = self._points[destination_id].name
+            raise DuplicateConnection(
+                f"Ya existe una conexión de '{origin_name}' a '{dest_name}'."
+            )
+
+        # C9: reverse connection must have the same cost
+        reverse_cost = self._adjacency.get(destination_id, {}).get(origin_id)
+        if reverse_cost is not None and reverse_cost != cost:
+            dest_name = self._points[destination_id].name
+            origin_name = self._points[origin_id].name
+            raise InconsistentCost(
+                f"Ya existe la conexión de '{dest_name}' a '{origin_name}' con un costo de "
+                f"{reverse_cost} km; el costo en ambos sentidos debe coincidir."
+            )
+
+        self._adjacency[origin_id][destination_id] = cost
+        return Connection(origin_id=origin_id, destination_id=destination_id, cost_km=cost)
