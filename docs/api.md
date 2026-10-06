@@ -199,6 +199,21 @@ Cada situación de rechazo es una excepción propia del núcleo, y una sola capa
 
 `PointNotFound` (en `neighbors`) no se expone por ningún endpoint de F1. Queda disponible para F2 y F3.
 
+### Implementación de los errores uniformes (T25)
+
+- Las excepciones están en `backend/domain/errors.py` y todas heredan de `GraphError`. El núcleo las lanza con un mensaje en español y no sabe nada de HTTP.
+- La traducción está en `backend/api/errors.py` (`HTTP_ERRORS`) y se registra una sola vez en `backend/app.py`. Los endpoints **no** capturan estas excepciones: las dejan subir.
+- Para leer el cuerpo de un `POST`, los endpoints usan `json_body()`. Si el cuerpo falta, no es JSON válido o no es un objeto, responde 400 `MISSING_DATA`.
+
+Códigos adicionales que no vienen de una regla de `diseno.md`, con la misma forma de error:
+
+| Situación | HTTP | `code` |
+|---|---|---|
+| `PointNotFound` (reservado para F2 y F3) | 404 | `POINT_NOT_FOUND` |
+| La ruta no existe | 404 | `NOT_FOUND` |
+| El método no está permitido en la ruta | 405 | `METHOD_NOT_ALLOWED` |
+| Error inesperado del servidor (sin detalles internos) | 500 | `INTERNAL_ERROR` |
+
 ## Puntos para revisar por el equipo
 
 - El costo como texto y el rechazo del número JSON.
