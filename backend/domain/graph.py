@@ -130,3 +130,12 @@ class Graph:
 
         self._adjacency[origin_id][destination_id] = cost
         return Connection(origin_id=origin_id, destination_id=destination_id, cost_km=cost)
+
+    def list_connections(self):
+        result = []
+        for origin_id, destinations in self._adjacency.items():
+            for dest_id, cost in destinations.items():
+                result.append(
+                    Connection(origin_id=origin_id, destination_id=dest_id, cost_km=cost)
+                )
+        return result
