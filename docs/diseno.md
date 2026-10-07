@@ -302,3 +302,72 @@ En total hay 15 nodos y 28 aristas dirigidas.
 - **Destino no alcanzable (F2).** En este mapa todas las casas destino se alcanzan desde la bodega. Para probar "destino desconectado" hará falta agregar un punto aislado o quitar una arista en la demostración.
 - **"Menos saltos no es menor costo" (F3).** Los costos actuales no muestran todavía un caso claro de dos rutas con distinto número de saltos y distinto costo. Se debe ajustar algún peso antes de F3.
 - **Tipo de cada nodo.** La lista cerrada de T09 es `warehouse`, `neighborhood` y `pickup_point`. La bodega es `warehouse` y las casas destino encajan como `pickup_point`, pero las esquinas no tienen un tipo claro. Hay que decidir cómo clasificarlas.
+
+---
+
+## T21 · Framework de la API
+
+### Decisión
+
+La API REST se implementa con **Flask** (versión fijada en `backend/requirements.txt`).
+
+### Alternativas comparadas
+
+| Criterio | Flask | FastAPI |
+|---|---|---|
+| Curva de aprendizaje | Baja: rutas y funciones simples | Media: tipos, modelos Pydantic, asincronía |
+| Validación de entrada | Manual | Automática con modelos Pydantic |
+| Documentación automática | No | Sí (OpenAPI / Swagger) |
+| Control del formato de error | Total, con un solo manejador de errores | Hay que reemplazar el formato por defecto de Pydantic (422 con su propia estructura) |
+| Dependencias | Pocas | Más (Pydantic, Starlette, servidor ASGI) |
+
+### Justificación
+
+- **Las reglas viven en el núcleo, no en el framework.** T09 decide que toda validación la hace la clase `Graph` (P1–P4, C1–C10) para que ninguna vía de entrada corrompa la red. La validación automática de FastAPI duplicaría esas reglas en dos lugares y podría responder antes que el núcleo con otro formato y otro código.
+- **El contrato de errores es propio.** `api.md` fija una forma única `{"error": {"code", "message"}}` y códigos HTTP específicos (400, 404, 409, 422). Con Flask basta un manejador que traduzca las excepciones del núcleo (T25); con FastAPI habría que desactivar o sobrescribir su respuesta 422 por defecto.
+- **El costo es texto decimal.** `cost_km` se recibe como texto y se convierte a `Decimal` en el núcleo. No se gana nada con el tipado automático de FastAPI.
+- **Alcance pequeño.** F1 tiene seis endpoints síncronos y sin autenticación; la asincronía y la documentación automática no aportan valor suficiente para el costo de aprenderlas.
+
+### Limitación aceptada
+
+No hay documentación interactiva automática. La referencia de la API es `docs/api.md`, y el script de aceptación comprueba que el backend la cumple.
+
+### Esqueleto
+
+`backend/app.py` crea la aplicación y expone `GET /health`, que responde `{"status": "ok"}` con código 200.
+
+---
+
+## T26 · Tecnología del frontend
+
+### Decisión
+
+La interfaz es una **aplicación web con Svelte 5 y Vite** (carpeta `frontend/`), que consume el backend Flask real.
+
+### Alternativas comparadas
+
+| Criterio | Streamlit | Web (Svelte + Vite) |
+|---|---|---|
+| Lenguaje | Python, igual que el backend | JavaScript |
+| Velocidad para una primera pantalla | Muy alta | Media |
+| Control de la interfaz y de los mensajes de error | Limitado a sus componentes | Total |
+| Separación frontend / backend | Tentación de llamar al núcleo directamente desde Python | Solo puede hablar con la API por HTTP |
+| Visualización de la red en F4 | Componentes propios o imágenes | Libre (SVG, imagen generada por el backend con NetworkX) |
+
+### Justificación
+
+- **La regla 3 de la guía exige consumir el backend real.** Con un frontend web es imposible saltarse la API: toda la información llega por HTTP, como en la demo con el despachador.
+- **Errores comprensibles.** El contrato devuelve `{"error": {"code", "message"}}`. El cliente `src/lib/api.js` convierte cualquier error en un mensaje para el coordinador, incluido el caso de backend apagado (T28).
+- **Crece hacia F4.** La vista de red y resultados de ruta necesitará control de la presentación que en Streamlit es más difícil.
+
+### Conexión con el backend
+
+En desarrollo, Vite reenvía `/health`, `/points`, `/connections` y `/network` al backend (por defecto `http://127.0.0.1:5000`, configurable con la variable `API_URL`). El navegador ve un solo origen, así que no hace falta CORS en Flask.
+
+### Limitación aceptada
+
+El equipo necesita Node.js además de Python, y el proxy solo existe en el servidor de desarrollo de Vite. Para F1 la demo se hace con `npm run dev`.
+
+### Pantalla inicial
+
+Muestra el estado del backend (`GET /health`) y la tabla de puntos (`GET /points`). Ningún dato está escrito a mano: todo viene de la API.
