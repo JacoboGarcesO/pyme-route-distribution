@@ -36,6 +36,20 @@ flask --app app run
 
 La comprobación de salud está disponible en `http://127.0.0.1:5000/health`.
 
+Para arrancar con la red de ejemplo ya cargada (el mapa de
+`docs/mapa_calles_carreras_rutapyme.png`: 15 puntos y 28 conexiones), define la
+variable `SEED_NETWORK=1`:
+
+```bash
+# PowerShell
+$env:SEED_NETWORK = "1"; flask --app app run
+# macOS o Linux
+SEED_NETWORK=1 flask --app app run
+```
+
+Sin la variable, el backend arranca con la red vacía, que es lo que necesita el
+script de aceptación. Los datos viven en memoria: al reiniciar se pierden.
+
 ## Ejecución del frontend
 
 Requiere Node.js. En otra terminal, con el backend en ejecución:
