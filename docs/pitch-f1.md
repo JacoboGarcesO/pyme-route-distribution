@@ -40,7 +40,7 @@ Con backend y frontend en marcha:
 
 1. Crear una bodega, dos barrios y un punto de recogida desde el frontend.
 2. Crear conexiones, incluida una de ida y vuelta con el mismo costo.
-3. Mostrar el mapa de la red y la vista con las conexiones salientes de cada punto.
+3. Mostrar la vista de la red con las conexiones salientes de cada punto.
 4. Mostrar un error: crear un costo negativo y leer el mensaje.
 
 ## 5. Caso borde (30 s)
@@ -49,7 +49,7 @@ Ya existe A→B con 4 km. Registrar B→A con 6 km se rechaza con 409 `INCONSIST
 
 ## 6. Evidencia y aportes (30 s)
 
-- Script de aceptación: `python scripts/acceptance_feature_1.py`, con la salida guardada en `docs/evidencia-f1.txt` (27 de 27 escenarios).
+- Script de aceptación: `python scripts/acceptance_feature_1.py`, con la salida guardada en `docs/evidencia-f1.txt` (23 de 23 escenarios).
 - Aportes del equipo: están en `docs/equipo.md` y en los PR de GitHub.
 
 ## Preguntas probables

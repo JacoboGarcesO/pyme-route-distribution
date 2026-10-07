@@ -34,8 +34,6 @@ def build_network(points, connections):
                 "name": point.name,
                 # Admite el tipo como texto o como Enum con .value.
                 "type": getattr(point.type, "value", point.type),
-                "x": point.x,
-                "y": point.y,
                 "connections": outgoing[point.id],
             }
             for point in points
