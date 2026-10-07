@@ -1,0 +1,122 @@
+Evidencia T32 - Feature 1 (RutaPyme)
+Comando: python scripts/acceptance_feature_1.py
+Backend: flask --app app run (desde backend/), recién iniciado, rama feature1
+Fecha: 2026-10-07
+============================================================
+
+ESCENARIO: T30 - API saludable
+ESPERABA: HTTP 200 y {status: ok}
+OBTUVE: Response(status=200, body={'status': 'ok'}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - red vacía
+ESPERABA: HTTP 200 y una lista de puntos vacía
+OBTUVE: Response(status=200, body={'points': []}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - crear puntos válidos
+ESPERABA: HTTP 201 y tres puntos con UUID
+OBTUVE: (Response(status=201, body={'id': '07dafed5-a297-435d-8825-6292201d2f08', 'name': 'Bodega 6dee3409', 'type': 'warehouse'}, error=None), Response(status=201, body={'id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603', 'name': 'Barrio 6dee3409', 'type': 'neighborhood'}, error=None), Response(status=201, body={'id': '0872172a-367c-48a4-ab4a-bb90bfc23dff', 'name': 'Recogida 6dee3409', 'type': 'pickup_point'}, error=None))
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - crear conexión válida
+ESPERABA: HTTP 201 y costo devuelto como texto
+OBTUVE: Response(status=201, body={'cost_km': '4.5', 'destination_id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603', 'origin_id': '07dafed5-a297-435d-8825-6292201d2f08'}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - conexión inversa con el mismo costo
+ESPERABA: HTTP 201: el sentido contrario se acepta si el costo coincide
+OBTUVE: Response(status=201, body={'cost_km': '4.5', 'destination_id': '07dafed5-a297-435d-8825-6292201d2f08', 'origin_id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603'}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - conexión de un solo sentido
+ESPERABA: HTTP 201 para pickup -> origen, sin crear la inversa
+OBTUVE: Response(status=201, body={'cost_km': '2', 'destination_id': '07dafed5-a297-435d-8825-6292201d2f08', 'origin_id': '0872172a-367c-48a4-ab4a-bb90bfc23dff'}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - listar puntos
+ESPERABA: HTTP 200 y al menos los tres puntos creados
+OBTUVE: Response(status=200, body={'points': [{'id': '07dafed5-a297-435d-8825-6292201d2f08', 'name': 'Bodega 6dee3409', 'type': 'warehouse'}, {'id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603', 'name': 'Barrio 6dee3409', 'type': 'neighborhood'}, {'id': '0872172a-367c-48a4-ab4a-bb90bfc23dff', 'name': 'Recogida 6dee3409', 'type': 'pickup_point'}]}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - listar conexiones
+ESPERABA: HTTP 200 con las tres conexiones y solo una entre pickup y origen
+OBTUVE: Response(status=200, body={'connections': [{'cost_km': '4.5', 'destination_id': '07dafed5-a297-435d-8825-6292201d2f08', 'origin_id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603'}, {'cost_km': '4.5', 'destination_id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603', 'origin_id': '07dafed5-a297-435d-8825-6292201d2f08'}, {'cost_km': '2', 'destination_id': '07dafed5-a297-435d-8825-6292201d2f08', 'origin_id': '0872172a-367c-48a4-ab4a-bb90bfc23dff'}]}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T30 - consultar red registrada
+ESPERABA: HTTP 200 con los puntos y la conexión creada
+OBTUVE: Response(status=200, body={'points': [{'connections': [{'cost_km': '4.5', 'destination_id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603', 'destination_name': 'Barrio 6dee3409'}], 'id': '07dafed5-a297-435d-8825-6292201d2f08', 'name': 'Bodega 6dee3409', 'type': 'warehouse'}, {'connections': [{'cost_km': '4.5', 'destination_id': '07dafed5-a297-435d-8825-6292201d2f08', 'destination_name': 'Bodega 6dee3409'}], 'id': '9951bfc4-5a85-4560-98cd-dc4fe3d02603', 'name': 'Barrio 6dee3409', 'type': 'neighborhood'}, {'connections': [{'cost_km': '2', 'destination_id': '07dafed5-a297-435d-8825-6292201d2f08', 'destination_name': 'Bodega 6dee3409'}], 'id': '0872172a-367c-48a4-ab4a-bb90bfc23dff', 'name': 'Recogida 6dee3409', 'type': 'pickup_point'}]}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - nombre vacío
+ESPERABA: HTTP 422 y código INVALID_NAME
+OBTUVE: Response(status=422, body={'error': {'code': 'INVALID_NAME', 'message': 'El nombre del punto no puede estar vacío.'}}, error='HTTP Error 422: UNPROCESSABLE ENTITY')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - tipo inválido
+ESPERABA: HTTP 422 y código INVALID_TYPE
+OBTUVE: Response(status=422, body={'error': {'code': 'INVALID_TYPE', 'message': "El tipo 'invalid' no es válido. Tipos permitidos: warehouse, neighborhood, pickup_point."}}, error='HTTP Error 422: UNPROCESSABLE ENTITY')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - origen inexistente
+ESPERABA: HTTP 404 y código ORIGIN_NOT_FOUND
+OBTUVE: Response(status=404, body={'error': {'code': 'ORIGIN_NOT_FOUND', 'message': "El punto de origen '8bdaae24-5c7d-4110-99fd-62df53914175' no existe."}}, error='HTTP Error 404: NOT FOUND')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - destino inexistente
+ESPERABA: HTTP 404 y código DESTINATION_NOT_FOUND
+OBTUVE: Response(status=404, body={'error': {'code': 'DESTINATION_NOT_FOUND', 'message': "El punto de destino '0d87b95d-c497-4a4b-af61-3fad875661a4' no existe."}}, error='HTTP Error 404: NOT FOUND')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - conexión duplicada
+ESPERABA: HTTP 409 y código DUPLICATE_CONNECTION
+OBTUVE: Response(status=409, body={'error': {'code': 'DUPLICATE_CONNECTION', 'message': "Ya existe una conexión de 'Bodega 6dee3409' a 'Barrio 6dee3409'."}}, error='HTTP Error 409: CONFLICT')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - costo distinto en el sentido contrario
+ESPERABA: HTTP 409 y código INCONSISTENT_COST
+OBTUVE: Response(status=409, body={'error': {'code': 'INCONSISTENT_COST', 'message': "Ya existe la conexión de 'Recogida 6dee3409' a 'Bodega 6dee3409' con un costo de 2 km; el costo en ambos sentidos debe coincidir."}}, error='HTTP Error 409: CONFLICT')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - punto sin tipo
+ESPERABA: HTTP 400 y código MISSING_DATA
+OBTUVE: Response(status=400, body={'error': {'code': 'MISSING_DATA', 'message': "Los campos 'name' y 'type' son obligatorios."}}, error='HTTP Error 400: BAD REQUEST')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - conexión sin costo
+ESPERABA: HTTP 400 y código MISSING_DATA
+OBTUVE: Response(status=400, body={'error': {'code': 'MISSING_DATA', 'message': "Los campos 'origin_id', 'destination_id' y 'cost_km' son obligatorios."}}, error='HTTP Error 400: BAD REQUEST')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - costo como número JSON
+ESPERABA: HTTP 400 y código INVALID_COST
+OBTUVE: Response(status=400, body={'error': {'code': 'INVALID_COST', 'message': 'El costo debe enviarse como texto decimal (por ejemplo, "4.5").'}}, error='HTTP Error 400: BAD REQUEST')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - auto-lazo
+ESPERABA: HTTP 422 y código SELF_LOOP
+OBTUVE: Response(status=422, body={'error': {'code': 'SELF_LOOP', 'message': 'El origen y el destino deben ser distintos.'}}, error='HTTP Error 422: UNPROCESSABLE ENTITY')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - costo cero
+ESPERABA: HTTP 422 y código NON_POSITIVE_COST
+OBTUVE: Response(status=422, body={'error': {'code': 'NON_POSITIVE_COST', 'message': 'El costo debe ser mayor que 0 km.'}}, error='HTTP Error 422: UNPROCESSABLE ENTITY')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - costo negativo
+ESPERABA: HTTP 422 y código NON_POSITIVE_COST
+OBTUVE: Response(status=422, body={'error': {'code': 'NON_POSITIVE_COST', 'message': 'El costo debe ser mayor que 0 km.'}}, error='HTTP Error 422: UNPROCESSABLE ENTITY')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - costo no numérico
+ESPERABA: HTTP 400 y código INVALID_COST
+OBTUVE: Response(status=400, body={'error': {'code': 'INVALID_COST', 'message': "El costo 'abc' no es un número decimal válido."}}, error='HTTP Error 400: BAD REQUEST')
+RESULTADO: PASÓ
+
+ESCENARIO: T31 - demasiados decimales
+ESPERABA: HTTP 422 y código COST_PRECISION
+OBTUVE: Response(status=422, body={'error': {'code': 'COST_PRECISION', 'message': 'El costo no puede tener más de 7 decimales.'}}, error='HTTP Error 422: UNPROCESSABLE ENTITY')
+RESULTADO: PASÓ
+
+RESUMEN: 23 PASÓ, 0 FALLÓ, 23 total
