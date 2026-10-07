@@ -154,6 +154,71 @@ def main() -> int:
         )
     )
 
+    reverse_connection = request(
+        "POST",
+        "/connections",
+        {"origin_id": destination_id, "destination_id": origin_id, "cost_km": "4.5"},
+    )
+    results.append(
+        run_scenario(
+            "T30 - conexión inversa con el mismo costo",
+            "HTTP 201: el sentido contrario se acepta si el costo coincide",
+            lambda: reverse_connection,
+            lambda r: r.status == 201
+            and isinstance(r.body, dict)
+            and r.body.get("origin_id") == destination_id
+            and r.body.get("cost_km") == "4.5",
+        )
+    )
+
+    one_way_connection = request(
+        "POST",
+        "/connections",
+        {"origin_id": pickup_id, "destination_id": origin_id, "cost_km": "2"},
+    )
+    results.append(
+        run_scenario(
+            "T30 - conexión de un solo sentido",
+            "HTTP 201 para pickup -> origen, sin crear la inversa",
+            lambda: one_way_connection,
+            lambda r: r.status == 201,
+        )
+    )
+
+    results.append(
+        run_scenario(
+            "T30 - listar puntos",
+            "HTTP 200 y al menos los tres puntos creados",
+            lambda: request("GET", "/points"),
+            lambda r: r.status == 200
+            and isinstance(r.body, dict)
+            and {origin_id, destination_id, pickup_id}
+            <= {p.get("id") for p in r.body.get("points", [])},
+        )
+    )
+
+    def connection_pairs(response: Response) -> set[tuple[str, str]]:
+        if not (response.status == 200 and isinstance(response.body, dict)):
+            return set()
+        return {
+            (c.get("origin_id"), c.get("destination_id"))
+            for c in response.body.get("connections", [])
+        }
+
+    results.append(
+        run_scenario(
+            "T30 - listar conexiones",
+            "HTTP 200 con las tres conexiones y solo una entre pickup y origen",
+            lambda: request("GET", "/connections"),
+            lambda r: connection_pairs(r)
+            == {
+                (origin_id, destination_id),
+                (destination_id, origin_id),
+                (pickup_id, origin_id),
+            },
+        )
+    )
+
     results.append(
         run_scenario(
             "T30 - consultar red registrada",
@@ -195,6 +260,30 @@ def main() -> int:
             {"origin_id": origin_id, "destination_id": destination_id, "cost_km": "4.5"},
             409,
             "DUPLICATE_CONNECTION",
+        ),
+        (
+            "T31 - costo distinto en el sentido contrario",
+            {"origin_id": origin_id, "destination_id": pickup_id, "cost_km": "3"},
+            409,
+            "INCONSISTENT_COST",
+        ),
+        (
+            "T31 - punto sin tipo",
+            {"name": f"Sin tipo {suffix}"},
+            400,
+            "MISSING_DATA",
+        ),
+        (
+            "T31 - conexión sin costo",
+            {"origin_id": origin_id, "destination_id": pickup_id},
+            400,
+            "MISSING_DATA",
+        ),
+        (
+            "T31 - costo como número JSON",
+            {"origin_id": origin_id, "destination_id": pickup_id, "cost_km": 4.5},
+            400,
+            "INVALID_COST",
         ),
         (
             "T31 - auto-lazo",
