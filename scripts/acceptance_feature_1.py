@@ -185,6 +185,37 @@ def main() -> int:
         )
     )
 
+    positioned = request(
+        "POST",
+        "/points",
+        {"name": f"Con posición {suffix}", "type": "neighborhood", "x": 2.5, "y": 1},
+    )
+    results.append(
+        run_scenario(
+            "T30 - punto con posición en el mapa",
+            "HTTP 201 y la posición x, y devuelta",
+            lambda: positioned,
+            lambda r: r.status == 201
+            and isinstance(r.body, dict)
+            and r.body.get("x") == 2.5
+            and r.body.get("y") == 1,
+        )
+    )
+
+    results.append(
+        run_scenario(
+            "T30 - punto sin posición",
+            "HTTP 200 y x, y nulos para un punto creado sin posición",
+            lambda: request("GET", "/points"),
+            lambda r: r.status == 200
+            and isinstance(r.body, dict)
+            and any(
+                p.get("id") == origin_id and p.get("x") is None and p.get("y") is None
+                for p in r.body.get("points", [])
+            ),
+        )
+    )
+
     results.append(
         run_scenario(
             "T30 - listar puntos",
@@ -284,6 +315,18 @@ def main() -> int:
             {"origin_id": origin_id, "destination_id": pickup_id, "cost_km": 4.5},
             400,
             "INVALID_COST",
+        ),
+        (
+            "T31 - posición incompleta",
+            {"name": f"Posición incompleta {suffix}", "type": "neighborhood", "x": 1},
+            422,
+            "INVALID_POSITION",
+        ),
+        (
+            "T31 - posición no numérica",
+            {"name": f"Posición texto {suffix}", "type": "neighborhood", "x": "a", "y": 1},
+            422,
+            "INVALID_POSITION",
         ),
         (
             "T31 - auto-lazo",

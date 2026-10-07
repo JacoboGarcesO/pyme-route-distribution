@@ -2,6 +2,7 @@
   import { getNetwork, listPoints } from './lib/api.js'
   import BackendStatus from './lib/BackendStatus.svelte'
   import ConnectionForm from './lib/ConnectionForm.svelte'
+  import NetworkMap from './lib/NetworkMap.svelte'
   import NetworkView from './lib/NetworkView.svelte'
   import PointForm from './lib/PointForm.svelte'
   import PointsList from './lib/PointsList.svelte'
@@ -55,6 +56,10 @@
 
   <PointForm onCreated={refresh} />
   <ConnectionForm {points} onCreated={refresh} />
+
+  {#if !networkLoading && !networkError}
+    <NetworkMap {network} />
+  {/if}
 
   <NetworkView {network} loading={networkLoading} error={networkError} />
 

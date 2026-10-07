@@ -170,7 +170,8 @@ Las reglas se aplican en el **núcleo del grafo**, no solo en la API, para que n
 | P1 | Falta el nombre o el tipo | Rechazar: dato obligatorio ausente |
 | P2 | El nombre es un texto vacío o solo espacios | Rechazar: nombre inválido |
 | P3 | El tipo no es uno de los permitidos (`warehouse`, `neighborhood`, `pickup_point`) | Rechazar: tipo inválido |
-| P4 | Todo lo anterior se cumple | Aceptar, generar un UUID nuevo y registrar el punto sin conexiones. La respuesta devuelve el UUID. |
+| P3b | `x` o `y` se envían por separado, o no son números finitos (la posición en el mapa es opcional, pero va completa) | Rechazar: posición inválida |
+| P4 | Todo lo anterior se cumple | Aceptar, generar un UUID nuevo y registrar el punto sin conexiones, con su posición si se envió. La respuesta devuelve el UUID. |
 
 ### Reglas para crear una conexión
 
@@ -467,3 +468,23 @@ El equipo necesita Node.js además de Python, y el proxy solo existe en el servi
 ### Pantalla inicial
 
 Muestra el estado del backend (`GET /health`) y la tabla de puntos (`GET /points`). Ningún dato está escrito a mano: todo viene de la API.
+
+---
+
+## Posición de los puntos en el mapa
+
+### Decisión
+
+Cada punto puede tener una **posición opcional** `x`, `y` en una cuadrícula, que el frontend usa solo para dibujar el mapa de la red. El grafo no usa la posición: las distancias siguen siendo los pesos de las aristas (km), y ningún recorrido de F2 o F3 depende de `x` e `y`.
+
+### Alternativas descartadas
+
+- **Diseño automático en el frontend:** funciona con cualquier red, pero se ve como un grafo abstracto y no como calles y carreras.
+- **Posiciones fijas por nombre en el frontend:** replica el dibujo de T11, pero las posiciones quedan fuera del modelo y no sirven para puntos nuevos.
+
+### Reglas
+
+- `x` e `y` son opcionales y se envían **juntos** (P3b): solo uno de los dos, o un valor que no sea un número finito (texto, booleano, infinito, `NaN`), se rechaza con 422 `INVALID_POSITION`.
+- Un punto sin posición es válido. El mapa lo dibuja en una fila al pie.
+- En la semilla, `x` crece con la carrera (5 a 8, de 0 a 3) e `y` con la calle (10 a 12, de 0 a 2). Las casas destino van dentro de su manzana.
+
