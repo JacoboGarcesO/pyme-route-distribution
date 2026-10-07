@@ -12,6 +12,7 @@
     DUPLICATE_CONNECTION: 'Esa conexión ya está registrada en ese sentido.',
     ORIGIN_NOT_FOUND: 'Actualiza la lista de puntos y vuelve a elegir el origen.',
     DESTINATION_NOT_FOUND: 'Actualiza la lista de puntos y vuelve a elegir el destino.',
+    INVALID_POSITION: 'Escribe x e y juntos, como números (por ejemplo 1 y 0.5), o déjalos vacíos.',
     NETWORK_ERROR: 'Inicia el backend y vuelve a intentarlo.',
   }
 </script>

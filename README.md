@@ -82,6 +82,10 @@ resultado.
 - `POST /connections` y `GET /connections`
 - `GET /network`
 
+## Mapa de la red
+
+La interfaz dibuja la red como un mapa, además del listado de conexiones por punto. Cada punto puede traer una posición opcional `x`, `y` (en `POST /points`); la semilla las incluye y reproduce el mapa de `docs/mapa_calles_carreras_rutapyme.png`. Las calles de doble sentido se dibujan con una flecha en cada extremo y las de un solo sentido con una sola flecha. Los puntos sin posición aparecen en una fila al pie del mapa.
+
 ## Decisiones de diseño
 
 - **Red dirigida:** no todas las calles son bidireccionales, así que A→B y B→A son aristas distintas. Si ambas existen, tienen el mismo costo.
@@ -94,7 +98,7 @@ El detalle y las alternativas descartadas están en [`docs/diseno.md`](docs/dise
 
 ## Evidencia
 
-La salida del script de aceptación (23 de 23 escenarios) está en
+La salida del script de aceptación (27 de 27 escenarios) está en
 [`docs/evidencia-f1.txt`](docs/evidencia-f1.txt). El video de respaldo se
 agregará aquí cuando esté grabado.
 
