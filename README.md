@@ -18,24 +18,40 @@ de la API en [`docs/api.md`](docs/api.md).
 Se requiere Python 3.12 o superior.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python -m venv .venv
 pip install -r backend/requirements.txt
 ```
 
+Activa el entorno antes de instalar: en Windows (PowerShell)
+`.venv\Scripts\Activate.ps1`; en macOS o Linux `source .venv/bin/activate`.
+
 ## Ejecución del backend
 
-Desde la raíz del proyecto:
+Desde la carpeta `backend/` (los imports del backend se resuelven desde ahí):
 
 ```bash
-flask --app backend.app run
+cd backend
+flask --app app run
 ```
 
 La comprobación de salud está disponible en `http://127.0.0.1:5000/health`.
 
+## Ejecución del frontend
+
+Requiere Node.js. En otra terminal, con el backend en ejecución:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Vite reenvía `/health`, `/points`, `/connections` y `/network` al backend en
+`http://127.0.0.1:5000`.
+
 ## Pruebas de aceptación
 
-Con el backend ejecutándose en otra terminal:
+Con el backend recién iniciado (la red debe estar vacía) en otra terminal:
 
 ```bash
 python scripts/acceptance_feature_1.py
