@@ -305,6 +305,102 @@ En total hay 15 nodos y 28 aristas dirigidas.
 
 ---
 
+## T12 · Traza manual de las operaciones
+
+### Alcance de la traza
+
+La traza usa un **subconjunto de 5 nodos** del mapa de T11 (opción A). Incluye un par de ida y vuelta con el mismo costo, una arista de un solo sentido, una casa destino con su acceso y un punto sin conexiones salientes.
+
+| Etiqueta | Qué es | Tipo usado en la traza |
+|---|---|---|
+| `BOD` | Bodega | `warehouse` |
+| `C11K6` | Esquina Calle 11 con Carrera 6 | `neighborhood` (provisional) |
+| `C10K5` | Esquina Calle 10 con Carrera 5 | `neighborhood` (provisional) |
+| `C10K6` | Esquina Calle 10 con Carrera 6 | `neighborhood` (provisional) |
+| `CasaA` | Casa destino A | `pickup_point` |
+
+El tipo de las esquinas sigue pendiente de decisión (ver "Pendiente por revisar" en T11). En la traza se usa `neighborhood` solo para poder ejecutar los pasos. Las etiquetas representan el UUID que el sistema genera en cada alta.
+
+### Notación
+
+El estado es la lista de adyacencia `{origen: {destino: km}}` de T08. Un punto recién creado aparece con un diccionario vacío. Las llamadas siguen la interfaz de `Graph` de `api.md`; los costos se envían como texto.
+
+### Parte 1: crear puntos
+
+| Paso | Operación | Estado después | Resultado |
+|---|---|---|---|
+| 1 | `add_point("Bodega", warehouse)` | `{BOD: {}}` | Aceptado (P4). Devuelve el UUID de `BOD` |
+| 2 | `add_point("Esquina C11-K6", neighborhood)` | `{BOD: {}, C11K6: {}}` | Aceptado |
+| 3 | `add_point("Esquina C10-K5", neighborhood)` | `{BOD: {}, C11K6: {}, C10K5: {}}` | Aceptado |
+| 4 | `add_point("Esquina C10-K6", neighborhood)` | `{BOD: {}, C11K6: {}, C10K5: {}, C10K6: {}}` | Aceptado |
+| 5 | `add_point("Casa A", pickup_point)` | `{BOD: {}, C11K6: {}, C10K5: {}, C10K6: {}, CasaA: {}}` | Aceptado |
+
+### Parte 2: crear conexiones válidas
+
+Cada fila agrega una entrada solo bajo el **origen**. La conexión inversa no se crea sola.
+
+| Paso | Operación | Cambio en el estado | Resultado |
+|---|---|---|---|
+| 6 | `BOD → C11K6`, `"0.4"` | `BOD: {C11K6: 0.4}` | Aceptado (C10) |
+| 7 | `C11K6 → BOD`, `"0.4"` | `C11K6: {BOD: 0.4}` | Aceptado: sentido contrario con el mismo costo |
+| 8 | `BOD → C10K5`, `"0.3"` | `BOD: {C11K6: 0.4, C10K5: 0.3}` | Aceptado |
+| 9 | `C10K5 → BOD`, `"0.3"` | `C10K5: {BOD: 0.3}` | Aceptado |
+| 10 | `C10K5 → C10K6`, `"0.4"` | `C10K5: {BOD: 0.3, C10K6: 0.4}` | Aceptado |
+| 11 | `C10K6 → C10K5`, `"0.4"` | `C10K6: {C10K5: 0.4}` | Aceptado |
+| 12 | `C10K6 → C11K6`, `"0.3"` | `C10K6: {C10K5: 0.4, C11K6: 0.3}` | Aceptado. Es de un solo sentido: no existe `C11K6 → C10K6` |
+| 13 | `C11K6 → CasaA`, `"0.1"` | `C11K6: {BOD: 0.4, CasaA: 0.1}` | Aceptado (acceso a la casa) |
+
+**Estado final después del paso 13:**
+
+```
+BOD:   { C11K6: 0.4, C10K5: 0.3 }
+C11K6: { BOD: 0.4,   CasaA: 0.1 }
+C10K5: { BOD: 0.3,   C10K6: 0.4 }
+C10K6: { C10K5: 0.4, C11K6: 0.3 }
+CasaA: { }
+```
+
+Este estado corresponde a las aristas 1, 2, 6, 7, 14, 15, 18 y 26 de la tabla de T11.
+
+### Parte 3: rechazos
+
+En todas las filas el estado queda **idéntico al estado final de la Parte 2**: una operación rechazada no modifica nada. Las reglas se evalúan en el orden de T09.
+
+| Paso | Operación | Regla que rechaza | Resultado (HTTP y `code`) | Cómo se detecta en la estructura |
+|---|---|---|---|---|
+| 14 | `BOD → C11K6`, `"0.4"` | C8 | 409 `DUPLICATE_CONNECTION` | `C11K6` ya es clave de `adj[BOD]` |
+| 15 | `BOD → C11K6`, `"0.9"` | C8 | 409 `DUPLICATE_CONNECTION` | Mismo sentido: es duplicado aunque cambie el costo |
+| 16 | `C11K6 → C10K6`, `"0.5"` | C9 | 409 `INCONSISTENT_COST` | `adj[C10K6][C11K6]` vale 0.3 y el costo nuevo es 0.5. El mensaje indica el 0.3 registrado |
+| 17 | `P99 → BOD`, `"0.2"` | C2 | 404 `ORIGIN_NOT_FOUND` | `P99` no es clave de la estructura |
+| 18 | `BOD → P99`, `"0.2"` | C3 | 404 `DESTINATION_NOT_FOUND` | `P99` no está registrado |
+| 19 | `BOD → BOD`, `"0.2"` | C4 | 422 `SELF_LOOP` | Origen y destino son iguales |
+| 20 | `BOD → CasaA`, `"abc"` | C5 | 400 `INVALID_COST` | El costo no es un decimal |
+| 21 | `BOD → CasaA`, `"-0.5"` | C6 | 422 `NON_POSITIVE_COST` | El costo es menor o igual que 0 |
+| 22 | `BOD → CasaA`, `"0.12345678"` | C7 | 422 `COST_PRECISION` | Tiene 8 decimales y el máximo es 7 |
+| 23 | `P99 → BOD`, `"-1"` | C2 (y C6) | 404 `ORIGIN_NOT_FOUND` | Dos reglas se rompen, pero solo se informa la primera en el orden de T09 |
+
+Notas de la traza:
+
+- En el paso 14 el sentido es el mismo que el del paso 6, por eso es duplicado. En el paso 7, en cambio, el sentido es contrario y se acepta porque el costo coincide.
+- El paso 16 es el caso contrario del paso 7: la conexión inversa ya existe (`C10K6 → C11K6`, 0.3), así que `C11K6 → C10K6` solo es válida con el mismo costo, 0.3.
+- Verificar el paso 16 cuesta una búsqueda directa en dos niveles de diccionario, O(1) en promedio. Esta es la razón principal de elegir diccionarios anidados en T08.
+
+### Parte 4: consultas
+
+| Paso | Consulta | Cómo se obtiene | Resultado |
+|---|---|---|---|
+| 24 | `neighbors(C11K6)` | Se lee `adj[C11K6]`, con 2 entradas, O(grado) | `{BOD: 0.4, CasaA: 0.1}` |
+| 25 | `neighbors(CasaA)` | Se lee `adj[CasaA]` | `{}`: un punto sin salidas es válido, no es un error |
+| 26 | `neighbors(P99)` | `P99` no es clave | Error `PointNotFound` (el núcleo lo lanza; F1 no lo expone por la API) |
+
+La consulta de la red legible (`GET /network`) devolvería, para este estado, cada punto con sus conexiones salientes. El resultado debe coincidir con el estado final de la Parte 2.
+
+### Comprobación
+
+- La traza cubre los tres rechazos que pide la tarea (duplicado: pasos 14 y 15; punto inexistente: 17 y 18; costo inválido: 20 a 22) y otros cinco más.
+- En todos los rechazos el estado no cambia.
+- El estado final coincide con las 8 aristas del mapa de T11 incluidas en el subconjunto.
+- Los pasos de la Parte 3 pueden convertirse directamente en escenarios del script de aceptación (T31).
 ## T21 · Framework de la API
 
 ### Decisión
