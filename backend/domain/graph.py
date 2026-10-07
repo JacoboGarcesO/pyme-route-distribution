@@ -1,4 +1,3 @@
-import math
 import re
 import uuid
 from decimal import Decimal
@@ -6,7 +5,6 @@ from decimal import Decimal
 from domain.errors import (
     MissingData,
     InvalidName,
-    InvalidPosition,
     InvalidType,
     OriginNotFound,
     DestinationNotFound,
@@ -30,21 +28,13 @@ def format_cost(cost_km):
 
 
 class Point:
-    def __init__(self, id, name, type, x=None, y=None):
+    def __init__(self, id, name, type):
         self.id = id
         self.name = name
         self.type = type
-        self.x = x  # optional position on the map; only used to draw it
-        self.y = y
 
     def to_dict(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "type": self.type,
-            "x": self.x,
-            "y": self.y,
-        }
+        return {"id": str(self.id), "name": self.name, "type": self.type}
 
 
 class Connection:
@@ -66,7 +56,7 @@ class Graph:
         self._points = {}     # {UUID: Point}
         self._adjacency = {}  # {UUID: {UUID: Decimal}}
 
-    def add_point(self, name, type, x=None, y=None):
+    def add_point(self, name, type):
         if not name or not str(name).strip():
             raise InvalidName("El nombre del punto no puede estar vacío.")
         if type not in VALID_TYPES:
@@ -74,24 +64,11 @@ class Graph:
                 f"El tipo '{type}' no es válido. "
                 "Tipos permitidos: warehouse, neighborhood, pickup_point."
             )
-        self._check_position(x, y)
         point_id = uuid.uuid4()
-        point = Point(id=point_id, name=str(name).strip(), type=type, x=x, y=y)
+        point = Point(id=point_id, name=str(name).strip(), type=type)
         self._points[point_id] = point
         self._adjacency[point_id] = {}
         return point
-
-    @staticmethod
-    def _check_position(x, y):
-        """P3b: x and y are optional, but come together and are finite numbers."""
-        if x is None and y is None:
-            return
-        for value in (x, y):
-            is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
-            if not is_number or not math.isfinite(value):
-                raise InvalidPosition(
-                    "La posición en el mapa debe ser x e y, dos números enviados juntos."
-                )
 
     @staticmethod
     def _parse_uuid(value):

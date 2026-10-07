@@ -43,17 +43,16 @@ Respuesta 200:
 Entrada:
 
 ```json
-{ "name": "Central warehouse", "type": "warehouse", "x": 0, "y": 1 }
+{ "name": "Central warehouse", "type": "warehouse" }
 ```
 
 - `name`: texto obligatorio, no vacío ni solo espacios. Puede repetirse entre puntos.
 - `type`: uno de `warehouse`, `neighborhood`, `pickup_point`.
-- `x`, `y`: opcionales, números finitos que ubican el punto en el mapa. Se envían juntos; si falta uno, o no son números, se responde 422 `INVALID_POSITION`. Sin ellos, el punto no tiene posición.
 
 Respuesta 201:
 
 ```json
-{ "id": "3f2b8c1e-9a4d-4e6b-b1d7-5c0a2e8f7a11", "name": "Central warehouse", "type": "warehouse", "x": 0, "y": 1 }
+{ "id": "3f2b8c1e-9a4d-4e6b-b1d7-5c0a2e8f7a11", "name": "Central warehouse", "type": "warehouse" }
 ```
 
 ### GET `/points`
@@ -61,7 +60,7 @@ Respuesta 201:
 Respuesta 200 (con la red vacía devuelve una lista vacía, no un error):
 
 ```json
-{ "points": [ { "id": "3f2b8c1e-...", "name": "Central warehouse", "type": "warehouse", "x": 0, "y": 1 } ] }
+{ "points": [ { "id": "3f2b8c1e-...", "name": "Central warehouse", "type": "warehouse" } ] }
 ```
 
 ### POST `/connections`
@@ -99,8 +98,6 @@ Respuesta 200:
       "id": "3f2b8c1e-...",
       "name": "Central warehouse",
       "type": "warehouse",
-      "x": 0,
-      "y": 1,
       "connections": [
         { "destination_id": "a91c04d2-...", "destination_name": "North", "cost_km": "4.5" }
       ]
@@ -133,7 +130,6 @@ El campo `code` es estable y lo puede usar el script de aceptación; el `message
 | C5 | `cost_km` no es un texto decimal válido (letras, vacío, número JSON, infinito, NaN) | 400 | `INVALID_COST` |
 | P2 | El nombre es vacío o solo espacios | 422 | `INVALID_NAME` |
 | P3 | El tipo no está en la lista cerrada | 422 | `INVALID_TYPE` |
-| P3b | `x` e `y` no se envían juntos o no son números finitos | 422 | `INVALID_POSITION` |
 | C4 | Origen y destino son el mismo punto | 422 | `SELF_LOOP` |
 | C6 | El costo es menor o igual que 0 | 422 | `NON_POSITIVE_COST` |
 | C7 | El costo tiene más de 7 decimales | 422 | `COST_PRECISION` |
@@ -171,7 +167,7 @@ La API no manipula el grafo directamente: delega todo en una clase `Graph` del n
 
 | Clase | Campos |
 |---|---|
-| `Point` | `id` (UUID), `name` (texto), `type` (`warehouse`, `neighborhood` o `pickup_point`), `x` e `y` (números opcionales; `null` si no hay posición) |
+| `Point` | `id` (UUID), `name` (texto), `type` (`warehouse`, `neighborhood` o `pickup_point`) |
 | `Connection` | `origin_id`, `destination_id`, `cost_km` (`Decimal`) |
 
 ### Clase `Graph`
@@ -180,7 +176,7 @@ Estado interno: los puntos por UUID y la lista de adyacencia `{origin_id: {desti
 
 | Método | Entrada | Devuelve | Errores que puede lanzar |
 |---|---|---|---|
-| `add_point` | `name`, `type`, `x` e `y` opcionales | `Point` con UUID nuevo | `InvalidName`, `InvalidType`, `InvalidPosition` |
+| `add_point` | `name`, `type` | `Point` con UUID nuevo | `InvalidName`, `InvalidType` |
 | `list_points` | — | lista de `Point` | — |
 | `add_connection` | `origin_id`, `destination_id`, `cost_km` | `Connection` | `OriginNotFound`, `DestinationNotFound`, `SelfLoop`, `InvalidCost`, `NonPositiveCost`, `CostPrecision`, `DuplicateConnection`, `InconsistentCost` |
 | `list_connections` | — | lista de `Connection` | — |
@@ -199,7 +195,6 @@ Cada situación de rechazo es una excepción propia del núcleo, y una sola capa
 | `InvalidCost` | 400 | `INVALID_COST` |
 | `InvalidName` | 422 | `INVALID_NAME` |
 | `InvalidType` | 422 | `INVALID_TYPE` |
-| `InvalidPosition` | 422 | `INVALID_POSITION` |
 | `SelfLoop` | 422 | `SELF_LOOP` |
 | `NonPositiveCost` | 422 | `NON_POSITIVE_COST` |
 | `CostPrecision` | 422 | `COST_PRECISION` |

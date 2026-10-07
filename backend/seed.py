@@ -9,25 +9,23 @@ The seed is optional: app.py loads it only when SEED_NETWORK=1, so the
 acceptance script keeps starting from an empty network.
 """
 
-# label, name, type, x, y. Corners use "neighborhood" (T11 leaves their type open).
-# x and y place each point on the drawn map: x grows with the Carrera (5 -> 0 ... 8 -> 3)
-# and y with the Calle (10 -> 0 ... 12 -> 2). The houses sit inside their block.
+# label, name, type. Corners use "neighborhood" (T11 leaves their type open).
 POINTS = [
-    ("BOD", "Bodega central", "warehouse", 0, 1),
-    ("C10K5", "Calle 10 con Carrera 5", "neighborhood", 0, 0),
-    ("C10K6", "Calle 10 con Carrera 6", "neighborhood", 1, 0),
-    ("C10K7", "Calle 10 con Carrera 7", "neighborhood", 2, 0),
-    ("C10K8", "Calle 10 con Carrera 8", "neighborhood", 3, 0),
-    ("C11K6", "Calle 11 con Carrera 6", "neighborhood", 1, 1),
-    ("C11K7", "Calle 11 con Carrera 7", "neighborhood", 2, 1),
-    ("C11K8", "Calle 11 con Carrera 8", "neighborhood", 3, 1),
-    ("C12K5", "Calle 12 con Carrera 5", "neighborhood", 0, 2),
-    ("C12K6", "Calle 12 con Carrera 6", "neighborhood", 1, 2),
-    ("C12K7", "Calle 12 con Carrera 7", "neighborhood", 2, 2),
-    ("C12K8", "Calle 12 con Carrera 8", "neighborhood", 3, 2),
-    ("CasaA", "Casa A", "pickup_point", 1.3, 0.7),
-    ("CasaB", "Casa B", "pickup_point", 2.7, 1.7),
-    ("CasaC", "Casa C", "pickup_point", 0.7, 1.7),
+    ("BOD", "Bodega central", "warehouse"),
+    ("C10K5", "Calle 10 con Carrera 5", "neighborhood"),
+    ("C10K6", "Calle 10 con Carrera 6", "neighborhood"),
+    ("C10K7", "Calle 10 con Carrera 7", "neighborhood"),
+    ("C10K8", "Calle 10 con Carrera 8", "neighborhood"),
+    ("C11K6", "Calle 11 con Carrera 6", "neighborhood"),
+    ("C11K7", "Calle 11 con Carrera 7", "neighborhood"),
+    ("C11K8", "Calle 11 con Carrera 8", "neighborhood"),
+    ("C12K5", "Calle 12 con Carrera 5", "neighborhood"),
+    ("C12K6", "Calle 12 con Carrera 6", "neighborhood"),
+    ("C12K7", "Calle 12 con Carrera 7", "neighborhood"),
+    ("C12K8", "Calle 12 con Carrera 8", "neighborhood"),
+    ("CasaA", "Casa A", "pickup_point"),
+    ("CasaB", "Casa B", "pickup_point"),
+    ("CasaC", "Casa C", "pickup_point"),
 ]
 
 # origin label, destination label, km. The warehouse sits on Calle 11 with Carrera 5.
@@ -75,9 +73,7 @@ def seed_network(graph):
     """Load the sample map into an empty graph and return {label: Point}."""
     if graph.list_points():
         raise RuntimeError("The seed needs an empty graph.")
-    points = {
-        label: graph.add_point(name, type_, x, y) for label, name, type_, x, y in POINTS
-    }
+    points = {label: graph.add_point(name, type_) for label, name, type_ in POINTS}
     for origin, destination, cost_km in CONNECTIONS:
         graph.add_connection(points[origin].id, points[destination].id, cost_km)
     return points

@@ -30,10 +30,6 @@ class InvalidType(GraphError):
     """P3: el tipo no está en la lista cerrada."""
 
 
-class InvalidPosition(GraphError):
-    """P3b: la posición en el mapa no son dos números finitos enviados juntos."""
-
-
 class SelfLoop(GraphError):
     """C4: origen y destino son el mismo punto."""
 

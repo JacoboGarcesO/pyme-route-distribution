@@ -50,14 +50,10 @@ export async function listPoints() {
   return body.points
 }
 
-// x e y (posición en el mapa) son opcionales: solo se envían si se indican.
-export function createPoint(name, type, x, y) {
-  const body = { name, type }
-  if (x !== undefined) body.x = x
-  if (y !== undefined) body.y = y
+export function createPoint(name, type) {
   return request('/points', {
     method: 'POST',
-    body: JSON.stringify(body),
+    body: JSON.stringify({ name, type }),
   })
 }
 
