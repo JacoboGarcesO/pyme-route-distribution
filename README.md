@@ -4,6 +4,13 @@ Herramienta para registrar una red operativa de entregas y consultar sus
 conexiones. El proyecto usa un grafo dirigido propio, una API REST en Python y
 un frontend conectado al backend.
 
+## Integrantes
+
+- Jacobo Garcés Oquendo
+- Mariana Usuga Mejía
+- Angie Carolina Pareja Villa
+- Jose Miguel Cortes Jaramillo
+
 ## Estado
 
 Feature 1 — Red operativa inicial.
