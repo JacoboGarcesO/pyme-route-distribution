@@ -1,7 +1,7 @@
 """Acceptance script for Feature 1 of RutaPyme.
 
 Usage:
-    python scripts/acceptance_feature_1.py
+    python acceptance/scripts/acceptance_feature_1.py
 
 The script uses only Python's standard library and expects a freshly started
 API at http://127.0.0.1:5000.

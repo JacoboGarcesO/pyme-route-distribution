@@ -75,7 +75,7 @@ Vite reenvía `/health`, `/points`, `/connections` y `/network` al backend en
 Con el backend recién iniciado (la red debe estar vacía) en otra terminal:
 
 ```bash
-python scripts/acceptance_feature_1.py
+python acceptance/scripts/acceptance_feature_1.py
 ```
 
 El script cubre escenarios normales, red vacía, conexiones válidas y reglas
