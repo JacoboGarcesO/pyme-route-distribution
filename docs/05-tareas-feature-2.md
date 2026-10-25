@@ -6,7 +6,7 @@ Estados sugeridos: `[ ]` pendiente · `[~]` en curso · `[x]` hecha.
 
 **Precondición:** F1 integrada en `main` y con tag `f1`. F2 usa la clase `Graph`, la representación de adyacencia de `diseno.md` (T08) y los errores de `backend/domain/errors.py`.
 
-**Pitch de F2:** Mariana (Jacobo expuso F1, así que no repite).
+**Pitch de F2:** Carolina (Jacobo expuso F1, así que no repite).
 
 ---
 
@@ -17,8 +17,8 @@ Propuesta para validar en equipo. Cada integrante tiene una decisión o núcleo,
 | Persona | Rol principal en F2 | Tareas | Min. estimados |
 |---|---|---|---|
 | **Jacobo** | Algoritmo y núcleo de recorrido | T01, T04, T05, T08, T11, T12, T23, T30 | 365 |
-| **Mariana** | Casos borde, errores y pitch | T07, T09, T13, T14, T15, T16, T18, T31 | 300 |
-| **Carolina** | Contrato, endpoint y interfaz | T02, T06, T10, T17, T20, T21, T22 | 335 |
+| **Mariana** | Casos borde, errores y pendientes de la red | T07, T09, T13, T14, T15, T16, T18, T20 | 270 |
+| **Carolina** | Contrato, endpoint, interfaz y pitch | T02, T06, T10, T17, T21, T22, T31 | 365 |
 | **Jose** | Script de aceptación, README y pruebas | T03, T19, T24, T25, T26, T27, T28 | 295 |
 | **Todos** | Bitácora, revisión de PR y coevaluación | T29, T32, T33 | por persona |
 
@@ -27,8 +27,8 @@ Propuesta para validar en equipo. Cada integrante tiene una decisión o núcleo,
 | Quién revisa | Qué revisa | Tarea |
 |---|---|---|
 | Jose | Recorrido y orden de visita de Jacobo (ejecutando el script) | T19 |
-| Carolina | Manejo de errores de Mariana (origen, destino, parámetros) | T06 y T17 |
-| Jacobo | Endpoint y pantalla de Carolina | T23 |
+| Carolina | Manejo de errores de Mariana (origen, destino, parámetros) | T14 y T18 |
+| Jacobo | Endpoint y pantalla de Carolina | T17, T21 y T22 |
 | Mariana | Escenarios del script de Jose frente a los casos borde de T09 | T26 |
 
 ---
@@ -40,7 +40,7 @@ Propuesta para validar en equipo. Cada integrante tiene una decisión o núcleo,
 - **Hecho cuando:** la rama existe en remoto.
 
 ### [ ] T02 · Registrar pitch y reparto de F2 (20 min) · *Carolina*
-- **Entregable:** actualizar `docs/equipo.md` con el responsable del pitch (Mariana) y el reparto de la tabla de arriba.
+- **Entregable:** actualizar `docs/equipo.md` con el responsable del pitch (Carolina) y el reparto de la tabla de arriba.
 - **Hecho cuando:** cada integrante aparece con al menos una decisión, una prueba o revisión y una parte funcional.
 
 ### [ ] T03 · Cargar el backlog en GitHub (40 min) · *Jose*
@@ -135,7 +135,7 @@ Propuesta para validar en equipo. Cada integrante tiene una decisión o núcleo,
 
 ## Bloque 4 — Interfaz mínima (guía, paso 6)
 
-### [ ] T20 · [DECISIÓN] Dónde mostrar la cobertura (30 min) · *Carolina*
+### [ ] T20 · [DECISIÓN] Dónde mostrar la cobertura (30 min) · *Mariana*
 - **Entregable:** en `docs/diseno.md`, decidir si es una sección nueva en la pantalla actual o una pantalla aparte. Reutilizar `ErrorMessage` y el cliente de `api.js`.
 - **Hecho cuando:** la decisión está escrita y justificada.
 
@@ -189,9 +189,9 @@ Cada escenario imprime: nombre, qué esperaba, qué obtuvo y PASÓ/FALLÓ. Sin `
 - **Entregable:** video con el flujo completo: consultar cobertura desde la bodega, destino desconectado y error por origen inexistente.
 - **Hecho cuando:** dura ≤ 3 min y el enlace está en el README.
 
-### [ ] T31 · Preparar el pitch (60 min) · *Mariana*
+### [ ] T31 · Preparar el pitch (60 min) · *Carolina*
 - **Entregable:** guion de 7 minutos con: problema y usuario, modelado, algoritmo elegido y por qué, complejidad, un caso borde, evidencia del script y aportes del equipo.
-- **Hecho cuando:** Mariana puede explicar y trazar cualquier pieza del código de F2.
+- **Hecho cuando:** Carolina puede explicar y trazar cualquier pieza del código de F2.
 
 ### [ ] T32 · Pull request, revisión y tag (45 min) · *Todos*
 - **Entregable:** PR de `feat-2/cobertura` a `main`, con revisión de otro integrante, aportes declarados con enlaces a commits y tag `f2`.
