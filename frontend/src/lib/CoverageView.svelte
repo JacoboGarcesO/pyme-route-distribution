@@ -65,11 +65,25 @@
 
   {#if result}
     {#if Array.isArray(result.reachable)}
-      <p class="success" role="status">Se encontraron {result.reachable.length} destinos alcanzables.</p>
+      {#if result.reachable.length === 0}
+        <p class="muted">Desde este origen no se alcanza ningún otro punto.</p>
+      {:else}
+        <p class="success" role="status">
+          Se pueden alcanzar {result.reachable.length} destinos desde este origen:
+        </p>
+        <ul class="reachable">
+          {#each result.reachable as point (point.id)}
+            <li>{point.name} <span class="type">{pointTypeLabel(point.type)}</span></li>
+          {/each}
+        </ul>
+      {/if}
+    {:else if result.reachable}
+      <p class="success" role="status">Sí se puede llegar al destino desde este origen.</p>
     {:else}
-      <p class="success" role="status">
-        {result.reachable ? 'El destino es alcanzable.' : 'El destino no es alcanzable.'}
-      </p>
+      <div class="not-reachable" role="status">
+        <p><strong>No se puede llegar al destino desde este origen.</strong></p>
+        <p>{result.reason}</p>
+      </div>
     {/if}
   {/if}
 </section>
@@ -77,6 +91,28 @@
 <style>
   .muted {
     color: var(--muted);
+  }
+  .reachable {
+    margin: 0;
+    padding-left: 20px;
+  }
+  .type {
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+  .not-reachable {
+    color: var(--error);
+    background: var(--error-bg);
+    border-left: 4px solid var(--error);
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+  .not-reachable p {
+    margin: 0;
+    color: var(--text);
+  }
+  .not-reachable p:first-child {
+    color: var(--error);
   }
   form {
     display: grid;
