@@ -589,3 +589,67 @@ Y para la transitividad: `BOD` no tiene una conexión directa a `CasaA`, pero s�
 ### Efecto en la API
 
 No cambia nada: el comportamiento de `GET /coverage` ya sigue estas reglas (`docs/api.md`, Feature 2). Esta sección fija por escrito lo que el código hace.
+
+---
+
+## T08 · Traza manual del recorrido por capas (Feature 2)
+
+### Qué se traza
+
+El recorrido BFS de T04 desde `BOD` sobre la red de F1 (15 puntos y 28 conexiones, `backend/seed.py`). En cada paso se saca un punto de la cola, se miran sus vecinos salientes **en orden de nombre** y los que no estaban visitados entran al final de la cola. Las etiquetas son las de T11 de F1; en el sistema cada punto tiene su UUID.
+
+Reglas del recorrido: se sigue el sentido de cada conexión, los costos no se usan (T05) y un punto visitado no vuelve a entrar a la cola.
+
+### Traza
+
+| Paso | Sale de la cola | Vecinos salientes (por nombre) | Nuevos: entran a la cola | Ya visitados: se ignoran | Cola después |
+|---|---|---|---|---|---|
+| 1 | `BOD` | C10K5, C11K6, C12K5 | C10K5, C11K6, C12K5 | — | C10K5, C11K6, C12K5 |
+| 2 | `C10K5` | BOD, C10K6 | C10K6 | BOD | C11K6, C12K5, C10K6 |
+| 3 | `C11K6` | BOD, C11K7, C12K6, CasaA | C11K7, C12K6, CasaA | BOD | C12K5, C10K6, C11K7, C12K6, CasaA |
+| 4 | `C12K5` | BOD, C12K6 | — | BOD, C12K6 | C10K6, C11K7, C12K6, CasaA |
+| 5 | `C10K6` | C10K5, C10K7, C11K6 | C10K7 | C10K5, C11K6 | C11K7, C12K6, CasaA, C10K7 |
+| 6 | `C11K7` | C10K7, C11K6, C12K7 | C12K7 | C10K7, C11K6 | C12K6, CasaA, C10K7, C12K7 |
+| 7 | `C12K6` | C12K7, CasaC | CasaC | C12K7 | CasaA, C10K7, C12K7, CasaC |
+| 8 | `CasaA` | — | — | — | C10K7, C12K7, CasaC |
+| 9 | `C10K7` | C10K8, C11K7 | C10K8 | C11K7 | C12K7, CasaC, C10K8 |
+| 10 | `C12K7` | C11K7, C12K8 | C12K8 | C11K7 | CasaC, C10K8, C12K8 |
+| 11 | `CasaC` | — | — | — | C10K8, C12K8 |
+| 12 | `C10K8` | C10K7 | — | C10K7 | C12K8 |
+| 13 | `C12K8` | C11K8, CasaB | C11K8, CasaB | — | C11K8, CasaB |
+| 14 | `C11K8` | C10K8, C11K7 | — | C10K8, C11K7 | CasaB |
+| 15 | `CasaB` | — | — | — | — |
+
+### Orden de visita
+
+`BOD → C10K5 → C11K6 → C12K5 → C10K6 → C11K7 → C12K6 → CasaA → C10K7 → C12K7 → CasaC → C10K8 → C12K8 → C11K8 → CasaB`
+
+### Capas (saltos desde `BOD`)
+
+| Saltos | Puntos |
+|---|---|
+| 0 | BOD |
+| 1 | C10K5, C11K6, C12K5 |
+| 2 | C10K6, C11K7, C12K6, CasaA |
+| 3 | C10K7, C12K7, CasaC |
+| 4 | C10K8, C12K8 |
+| 5 | C11K8, CasaB |
+
+### Lo que muestra la traza
+
+- **Los ciclos no provocan bucles.** En el paso 2, `C10K5` mira a `BOD` y lo ignora porque ya está visitado; en los pasos 5 y 6 pasa lo mismo con `C10K5`, `C11K6` y `C10K7`; en el paso 14, `C11K8` ignora a `C10K8` y `C11K7`. Sin el conjunto de visitados, el ciclo `C10K5` ↔ `C10K6` repetiría el recorrido sin terminar.
+- **Un punto se descubre una sola vez**, por el primer camino que lo alcanza. `C12K6` entra a la cola en el paso 3 (desde `C11K6`), así que en el paso 4 `C12K5` lo ve y lo ignora.
+- **Los puntos sin salidas** (`CasaA`, `CasaC`, `CasaB`) salen de la cola sin agregar nada; no es un error, solo no llevan a otros puntos.
+- **El recorrido termina cuando la cola queda vacía** (paso 15). Descubrió 15 puntos: los 14 destinos alcanzables más el origen.
+
+### Destino desconectado (D)
+
+La red de F1 no tiene un punto aislado; la demo agregará uno, `D` (T07 de F2), sin conexiones de entrada ni de salida.
+
+- Ningún punto lo tiene como vecino saliente, así que `D` **nunca entra a la cola** y no aparece en el orden de visita.
+- La consulta de `BOD` hacia `D` responde `reachable: false` con la explicación "No hay un camino dirigido desde 'Bodega central' hasta 'D'", como define `docs/api.md`. Es una respuesta válida, no un error.
+- Si `D` fuera el origen, el recorrido solo lo visitaría a él, y su lista de alcanzables sería `[]`.
+
+### Verificación
+
+El orden de visita de la traza se comparó con el que calcula `visit_order` de `backend/domain/coverage.py` sobre la misma red: es idéntico.
