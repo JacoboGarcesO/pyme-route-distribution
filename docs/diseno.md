@@ -501,3 +501,59 @@ En cobertura se separan dos tipos de resultado:
 ### Consistencia con F1
 
 Se reutilizan los códigos de `docs/api.md` (`MISSING_DATA`, `ORIGIN_NOT_FOUND`, `DESTINATION_NOT_FOUND`). No se crean códigos nuevos.
+
+---
+
+## T04 · Algoritmo de recorrido: BFS o DFS (Feature 2)
+
+### Decisión
+
+La cobertura se calcula con un **recorrido por capas (BFS)**: una cola, un conjunto de visitados y los vecinos salientes de `Graph` en orden de nombre. La implementación está en `backend/domain/coverage.py`.
+
+### La pregunta que debe responder
+
+"¿Qué destinos se alcanzan desde una bodega?" Es una pregunta de existencia: importa si hay un camino dirigido, no cuánto cuesta ni cuál es el mejor. Por eso el brief de F2 dice que el cliente "no pide todavía la ruta más barata: pide cobertura".
+
+### Comparación
+
+| Criterio | BFS (por capas) | DFS (exploración profunda) |
+|---|---|---|
+| Idea | Visita todos los vecinos del origen, luego los vecinos de esos, y así por niveles | Sigue un camino hasta el fondo y, al no poder seguir, retrocede y prueba otro |
+| Estructura | Cola (primero en entrar, primero en salir) | Pila o recursión |
+| ¿Qué puntos descubre? | Los mismos que DFS | Los mismos que BFS |
+| Tiempo | O(V + E) | O(V + E) |
+| Memoria extra | O(V): visitados y cola (la cola llega al ancho de la red) | O(V): visitados y pila (la pila llega al largo de un camino) |
+| Información extra | Los **saltos mínimos** a cada punto, sin costo adicional | Ningún dato útil: el primer camino que encuentra puede ser larguísimo |
+| Explicación al despachador | "Primero lo más cercano, luego lo siguiente" | Menos intuitivo: salta por toda una calle antes de mirar las demás |
+
+V es el número de puntos y E el de conexiones. Los dos necesitan el conjunto de visitados: la red tiene ciclos (por ejemplo, `C10K5` y `C10K6` se conectan en ambos sentidos) y sin él el recorrido no terminaría.
+
+### Orden de visita sobre la red de F1 (desde `BOD`)
+
+- **BFS** (entre paréntesis, los saltos): `BOD`(0), `C10K5`(1), `C11K6`(1), `C12K5`(1), `C10K6`(2), `C11K7`(2), `C12K6`(2), `CasaA`(2), `C10K7`(3), `C12K7`(3), `CasaC`(3), `C10K8`(4), `C12K8`(4), `C11K8`(5), `CasaB`(5).
+- **DFS**: `BOD`, `C10K5`, `C10K6`, `C10K7`, `C10K8`, `C11K7`, `C11K6`, `C12K6`, `C12K7`, `C12K8`, `C11K8`, `CasaB`, `CasaC`, `CasaA`, `C12K5`.
+
+Los dos descubren los mismos 15 puntos. BFS los recorre "a la redonda"; DFS se va primero por toda la Calle 10 hasta el fondo.
+
+### Por qué BFS
+
+1. **Responde la pregunta de cobertura.** Los dos algoritmos sirven para saber qué se alcanza, así que la decisión se apoya en lo demás.
+2. **Da una explicación natural.** El orden por capas es el que el despachador entiende ("primero los cercanos"), y los saltos mínimos quedan disponibles si hacen falta.
+3. **Es predecible.** Con los vecinos ordenados por nombre, el orden de visita es siempre el mismo, y la traza manual (T08) se puede reproducir y verificar contra la API.
+4. **Tiene el mismo costo que DFS** en tiempo y en memoria, así que no se pierde nada.
+
+### Por qué no sirve para la ruta de menor costo (eso es F3)
+
+BFS minimiza el **número de saltos**, no los kilómetros: menos saltos no significa menor costo. En la red de F1, de `BOD` a `C12K8`:
+
+| Camino | Saltos | Distancia |
+|---|---|---|
+| `BOD` → `C11K6` → `C11K7` → `C12K7` → `C12K8` (el que BFS descubre) | 4 | 1,5 km |
+| `BOD` → `C12K5` → `C12K6` → `C12K7` → `C12K8` (el más barato) | 4 | 1,4 km |
+
+Los dos caminos empatan en saltos, así que BFS no distingue entre ellos y se queda con el primero que encuentra, que cuesta más. Para elegir el de menor distancia hace falta un algoritmo que use los pesos (F3). Por eso la cobertura **no devuelve rutas ni costos**: mezclar las dos necesidades porque "el algoritmo ya estaba ahí" es lo que el brief pide evitar.
+
+### Alternativa descartada y limitaciones
+
+- **DFS:** descartado porque no aporta nada a la cobertura y su orden es menos explicable. Sería igual de válido para saber qué se alcanza.
+- El recorrido no mide distancias en km ni compara caminos. Los saltos que BFS permite calcular no se exponen en la API de F2.
