@@ -467,3 +467,37 @@ El equipo necesita Node.js además de Python, y el proxy solo existe en el servi
 ### Pantalla inicial
 
 Muestra el estado del backend (`GET /health`) y la tabla de puntos (`GET /points`). Ningún dato está escrito a mano: todo viene de la API.
+
+---
+
+## T06 · Respuestas válidas frente a errores (Feature 2)
+
+### Decisión
+
+En cobertura se separan dos tipos de resultado:
+
+- **Respuesta de negocio:** la consulta fue válida y el sistema tiene una respuesta, aunque la respuesta sea "no". Se devuelve con código 200.
+- **Error:** la consulta no se puede responder porque falta un dato o un punto no existe. Se devuelve con código de error y el mismo formato de F1.
+
+### Casos
+
+| Caso | Resultado | HTTP | `code` |
+|---|---|---|---|
+| Origen válido, sin destino en la consulta | Lista de destinos alcanzables | 200 | — |
+| Origen y destino válidos, destino alcanzable | `reachable: true` | 200 | — |
+| Origen y destino válidos, destino no alcanzable | `reachable: false` con explicación | 200 | — |
+| Falta el parámetro `origin` | Error | 400 | `MISSING_DATA` |
+| Origen inexistente o UUID inválido | Error | 404 | `ORIGIN_NOT_FOUND` |
+| Destino inexistente o UUID inválido | Error | 404 | `DESTINATION_NOT_FOUND` |
+| Red vacía con origen indicado | El origen no existe en la red | 404 | `ORIGIN_NOT_FOUND` |
+| Red vacía sin origen | Falta el parámetro | 400 | `MISSING_DATA` |
+
+### Justificación
+
+- **"No alcanzable" no es un error.** Es el resultado correcto de la consulta, y el despachador necesita verlo como respuesta normal para decidir. Si fuera un 404, el frontend lo trataría como fallo de la aplicación.
+- **Origen o destino inexistente sí es un error.** La consulta no puede responderse, y el mensaje debe decir cuál de los dos falta.
+- **La red vacía se trata como origen inexistente.** Si no hay puntos, ningún origen existe, así que no hace falta un caso aparte.
+
+### Consistencia con F1
+
+Se reutilizan los códigos de `docs/api.md` (`MISSING_DATA`, `ORIGIN_NOT_FOUND`, `DESTINATION_NOT_FOUND`). No se crean códigos nuevos.
