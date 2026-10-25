@@ -1,16 +1,21 @@
-"""Recorrido por capas (BFS) desde un origen sobre la red dirigida.
+"""Cobertura: qué puntos se alcanzan desde un origen en la red dirigida.
 
-Creado para T17 (Issue #68). Jacobo (T11 a T12) y Mariana (T13) planean la
-misma lógica en su propio trabajo: al integrar, conviene quedarse con una
-sola versión.
+Usa un recorrido por capas (BFS), decidido en T04 de `docs/diseno.md`: una cola,
+un conjunto de visitados y los vecinos salientes de `Graph` en orden de nombre,
+así el orden de visita es siempre el mismo. "Alcanzable" se define en T05: solo
+importa que exista un camino dirigido; los costos no se usan.
 """
 
 from collections import deque
 
-from domain.errors import DestinationNotFound, OriginNotFound
+from domain.errors import OriginNotFound
 
 
 def find_point(graph, point_id, error_class, label):
+    """Devuelve el punto con ese UUID o lanza `error_class` si no existe.
+
+    Un UUID con formato inválido se trata igual que uno inexistente.
+    """
     for point in graph.list_points():
         if str(point.id) == str(point_id):
             return point
@@ -21,7 +26,10 @@ def visit_order(graph, origin_id):
     """UUIDs alcanzables en orden de visita, con el origen primero.
 
     Sigue el sentido de cada conexión. Un conjunto de visitados evita bucles
-    cuando la red tiene ciclos.
+    cuando la red tiene ciclos, y un punto se visita una sola vez, por el primer
+    camino que lo alcanza. Tiempo O(V + E) y memoria O(V).
+
+    Lanza `OriginNotFound` si el origen no existe (la red vacía incluida).
     """
     origin = find_point(graph, origin_id, OriginNotFound, "punto de origen")
     order = [origin.id]
