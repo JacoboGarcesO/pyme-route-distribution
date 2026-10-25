@@ -11,6 +11,9 @@
   let error = $state(null)
   let result = $state(null)
 
+  // visit_order trae UUID: los nombres salen de la lista de puntos de la red.
+  const pointsById = $derived(new Map(points.map((point) => [point.id, point])))
+
   // Los nombres pueden repetirse, así que cada opción muestra tipo y UUID corto.
   function optionLabel(point) {
     return `${point.name} (${pointTypeLabel(point.type)}) · ${point.id.slice(0, 8)}`
@@ -77,6 +80,22 @@
           {/each}
         </ul>
       {/if}
+      {#if result.visit_order?.length > 1}
+        <h3>Orden de visita</h3>
+        <p class="muted">
+          Así recorre la red el sistema: primero el origen, luego sus vecinos más
+          cercanos, y así por capas.
+        </p>
+        <ol class="visit-order">
+          {#each result.visit_order as pointId, index (pointId)}
+            {@const point = pointsById.get(pointId)}
+            <li>
+              {point ? point.name : pointId}
+              {#if index === 0}<span class="type">origen</span>{/if}
+            </li>
+          {/each}
+        </ol>
+      {/if}
     {:else if result.reachable}
       <p class="success" role="status">Sí se puede llegar al destino desde este origen.</p>
     {:else}
@@ -92,9 +111,14 @@
   .muted {
     color: var(--muted);
   }
-  .reachable {
+  .reachable,
+  .visit-order {
     margin: 0;
     padding-left: 20px;
+  }
+  h3 {
+    margin: 16px 0 4px;
+    font-size: 1rem;
   }
   .type {
     color: var(--muted);
