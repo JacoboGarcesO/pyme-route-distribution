@@ -557,3 +557,35 @@ Los dos caminos empatan en saltos, así que BFS no distingue entre ellos y se qu
 
 - **DFS:** descartado porque no aporta nada a la cobertura y su orden es menos explicable. Sería igual de válido para saber qué se alcanza.
 - El recorrido no mide distancias en km ni compara caminos. Los saltos que BFS permite calcular no se exponen en la API de F2.
+
+---
+
+## T05 · Qué significa "alcanzable" (Feature 2)
+
+### Decisión
+
+Un punto B es **alcanzable desde A** si existe un camino dirigido de A a B: una secuencia de conexiones, cada una recorrida en su sentido. Solo importa que el camino exista.
+
+### Reglas
+
+1. **Se respeta el sentido de cada conexión.** A→B permite ir de A a B, nunca de B a A. Esto es lo que se decidió en T06 de F1 al modelar la red como dirigida.
+2. **La relación no es simétrica.** Que B sea alcanzable desde A no implica que A lo sea desde B.
+3. **Es transitiva.** Si A→B y B→C existen, C es alcanzable desde A aunque no haya una conexión directa A→C.
+4. **Los costos no influyen.** Una conexión de 0,1 km y una de 5 km cuentan igual. Esa es la diferencia con la ruta de menor costo (F3).
+5. **El origen es alcanzable desde sí mismo** (un camino de cero saltos). Por eso una consulta con `destination` igual a `origin` responde `reachable: true`. En cambio, la lista `reachable` de destinos **no incluye al origen**, porque es la lista de lugares a los que se puede llegar desde él; el origen sí va primero en `visit_order`, porque es donde empieza el recorrido.
+6. **Un punto sin conexiones salientes solo se alcanza a sí mismo.** Su lista `reachable` queda vacía, y no es un error.
+7. **Un punto sin conexiones de entrada** no es alcanzable desde ningún otro punto. Es el caso del destino desconectado de la demo.
+
+### Ejemplo con la red de F1
+
+La pregunta: si existe B→C pero no C→B, ¿C es alcanzable desde B?
+
+- Existe `C11K6` → `CasaA` y no existe `CasaA` → `C11K6`.
+- **`CasaA` es alcanzable desde `C11K6`:** hay un camino de un salto.
+- **`C11K6` no es alcanzable desde `CasaA`:** `CasaA` no tiene conexiones salientes, así que desde ella no se llega a ningún punto.
+
+Y para la transitividad: `BOD` no tiene una conexión directa a `CasaA`, pero sí `BOD` → `C11K6` → `CasaA`, así que `CasaA` es alcanzable desde `BOD`.
+
+### Efecto en la API
+
+No cambia nada: el comportamiento de `GET /coverage` ya sigue estas reglas (`docs/api.md`, Feature 2). Esta sección fija por escrito lo que el código hace.
