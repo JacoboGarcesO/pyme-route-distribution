@@ -1,5 +1,6 @@
 from flask import Flask
 
+from api.coverage import coverage_bp
 from api.errors import register_error_handlers
 from api.network import network_bp
 from api.points import points_bp
@@ -10,6 +11,7 @@ app.extensions["graph"] = Graph()
 register_error_handlers(app)
 app.register_blueprint(points_bp)
 app.register_blueprint(network_bp)
+app.register_blueprint(coverage_bp)
 
 
 @app.route("/health")
