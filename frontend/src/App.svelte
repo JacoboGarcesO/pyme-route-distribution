@@ -2,6 +2,7 @@
   import { getNetwork, listPoints } from './lib/api.js'
   import BackendStatus from './lib/BackendStatus.svelte'
   import ConnectionForm from './lib/ConnectionForm.svelte'
+  import CoverageView from './lib/CoverageView.svelte'
   import NetworkView from './lib/NetworkView.svelte'
   import PointForm from './lib/PointForm.svelte'
   import PointsList from './lib/PointsList.svelte'
@@ -57,6 +58,8 @@
   <ConnectionForm {points} onCreated={refresh} />
 
   <NetworkView {network} loading={networkLoading} error={networkError} />
+
+  <CoverageView {points} />
 
   <PointsList {points} loading={pointsLoading} error={pointsError} />
   <button type="button" onclick={refresh}>Actualizar</button>

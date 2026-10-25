@@ -7,7 +7,7 @@ const apiUrl = process.env.API_URL ?? 'http://127.0.0.1:5000'
 
 // Rutas del contrato (docs/api.md). No llevan prefijo /api, así que se
 // reenvían una por una al backend y el navegador no necesita CORS.
-const apiRoutes = ['/health', '/points', '/connections', '/network']
+const apiRoutes = ['/health', '/points', '/connections', '/network', '/coverage']
 
 // https://vite.dev/config/
 export default defineConfig({

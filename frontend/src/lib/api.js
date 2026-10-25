@@ -73,3 +73,10 @@ export async function getNetwork() {
   const body = await request('/network')
   return body.points
 }
+
+// Sin destino devuelve los alcanzables; con destino dice si es alcanzable.
+export function getCoverage(originId, destinationId) {
+  const params = new URLSearchParams({ origin: originId })
+  if (destinationId) params.set('destination', destinationId)
+  return request(`/coverage?${params}`)
+}
