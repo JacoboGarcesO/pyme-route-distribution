@@ -3,6 +3,7 @@ import os
 from flask import Flask
 
 from api.connections import connections_bp
+from api.coverage import coverage_bp
 from api.errors import register_error_handlers
 from api.network import network_bp
 from api.points import points_bp
@@ -18,6 +19,7 @@ register_error_handlers(app)
 app.register_blueprint(points_bp)
 app.register_blueprint(connections_bp)
 app.register_blueprint(network_bp)
+app.register_blueprint(coverage_bp)
 
 
 @app.route("/health")

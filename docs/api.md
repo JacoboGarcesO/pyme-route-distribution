@@ -226,3 +226,90 @@ Códigos adicionales que no vienen de una regla de `diseno.md`, con la misma for
 - La elección de 404 para origen o destino inexistente.
 - La ausencia de prefijo `/api` en las rutas.
 - Los mensajes de error (`message`) quedan en español; si el equipo prefiere inglés, solo cambia ese texto.
+
+---
+
+# Feature 2 — Cobertura
+
+Consulta qué destinos se alcanzan desde un origen siguiendo el sentido de las conexiones (decisiones en `diseno.md`, T04 a T06). El costo no influye: solo importa si existe un camino.
+
+## GET `/coverage`
+
+Parámetros de consulta:
+
+| Parámetro | Obligatorio | Descripción |
+|---|---|---|
+| `origin` | Sí | UUID del punto de origen |
+| `destination` | No | UUID de un punto. Si se indica, la respuesta dice si es alcanzable |
+
+### Sin `destination`: destinos alcanzables
+
+Entrada: `GET /coverage?origin=3f2b8c1e-9a4d-4e6b-b1d7-5c0a2e8f7a11`
+
+Respuesta 200:
+
+```json
+{
+  "origin_id": "3f2b8c1e-9a4d-4e6b-b1d7-5c0a2e8f7a11",
+  "reachable": [
+    { "id": "a91c04d2-...", "name": "Norte", "type": "neighborhood" },
+    { "id": "c7e1f0b3-...", "name": "Casa A", "type": "pickup_point" }
+  ],
+  "visit_order": [
+    "3f2b8c1e-9a4d-4e6b-b1d7-5c0a2e8f7a11",
+    "a91c04d2-...",
+    "c7e1f0b3-..."
+  ]
+}
+```
+
+- `reachable` no incluye el origen.
+- `visit_order` es el orden en que se visitan los puntos (el origen primero), necesario para la traza de T08 y para la pantalla (T23).
+- Si el origen no tiene conexiones salientes, `reachable` es `[]`.
+
+### Con `destination`: ¿es alcanzable?
+
+Entrada: `GET /coverage?origin=3f2b8c1e-...&destination=c7e1f0b3-...`
+
+Respuesta 200 si es alcanzable:
+
+```json
+{
+  "origin_id": "3f2b8c1e-...",
+  "destination_id": "c7e1f0b3-...",
+  "reachable": true
+}
+```
+
+Respuesta 200 si no es alcanzable:
+
+```json
+{
+  "origin_id": "3f2b8c1e-...",
+  "destination_id": "d4a2e9f1-...",
+  "reachable": false,
+  "reason": "No hay un camino dirigido desde 'Bodega central' hasta 'Destino D'."
+}
+```
+
+El campo `reason` solo aparece cuando `reachable` es `false`.
+
+### Errores
+
+Todos siguen el formato de F1: `{"error": {"code", "message"}}`.
+
+| Situación | HTTP | `code` |
+|---|---|---|
+| Falta `origin` | 400 | `MISSING_DATA` |
+| `origin` no existe, es UUID inválido, o la red está vacía | 404 | `ORIGIN_NOT_FOUND` |
+| `destination` no existe o es UUID inválido | 404 | `DESTINATION_NOT_FOUND` |
+
+### Ejemplos de uso
+
+| Petición | Resultado |
+|---|---|
+| `GET /coverage` | 400 `MISSING_DATA` |
+| `GET /coverage?origin=<inexistente>` | 404 `ORIGIN_NOT_FOUND` |
+| `GET /coverage?origin=<bodega>` | 200 con la lista de alcanzables |
+| `GET /coverage?origin=<bodega>&destination=<D aislado>` | 200 con `reachable: false` |
+| `GET /coverage?origin=<bodega>&destination=<inexistente>` | 404 `DESTINATION_NOT_FOUND` |
