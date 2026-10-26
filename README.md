@@ -116,3 +116,70 @@ agregará aquí cuando esté grabado.
 - [Bitácora de IA](docs/bitacora-ia.md)
 - [Guion del pitch](docs/pitch-f1.md)
 - [Evidencia de las pruebas de aceptación](docs/evidencia-f1.txt)
+
+## Feature 2 — Cobertura de entregas
+
+La Feature 2 permite consultar los destinos alcanzables desde un origen y
+verificar si existe un camino dirigido hasta un destino específico. Los
+costos no influyen en la cobertura: solo se comprueba la existencia de un
+camino.
+
+El endpoint es:
+
+```text
+GET /coverage?origin=<id>&destination=<id-opcional>
+```
+
+Sin `destination`, devuelve los destinos alcanzables y el orden de visita.
+Con `destination`, devuelve `reachable: true` o `reachable: false` y una
+explicación cuando no existe camino. Un origen o destino inexistente devuelve
+el error correspondiente; si falta `origin`, devuelve `400 MISSING_DATA`.
+
+## Ejecución del script de aceptación
+
+Con el backend iniciado en `http://127.0.0.1:5000` y una red vacía, ejecutar:
+
+```bash
+python acceptance/scripts/acceptance_feature_2.py
+```
+
+El script crea una red pequeña y comprueba la red vacía, el alcance normal,
+un destino alcanzable, el destino desconectado `Casa D`, los identificadores
+inexistentes y la falta del origen. Cada escenario imprime lo esperado, lo
+obtenido y `PASÓ/FALLÓ`.
+
+## Feature 2 — Cobertura de entregas
+
+La Feature 2 permite consultar los destinos alcanzables desde un origen y
+verificar si existe un camino dirigido hasta un destino específico. Los
+costos no influyen en la cobertura: solo se comprueba la existencia de un
+camino.
+
+El endpoint es:
+
+```text
+GET /coverage?origin=<id>&destination=<id-opcional>
+```
+
+Sin `destination`, devuelve los destinos alcanzables y el orden de visita.
+Con `destination`, devuelve `reachable: true` o `reachable: false` y una
+explicación cuando no existe camino. Un origen o destino inexistente devuelve
+el error correspondiente; si falta `origin`, devuelve `400 MISSING_DATA`.
+
+## Ejecución del script de aceptación de Feature 2
+
+Con el backend iniciado en `http://127.0.0.1:5000` y una red vacía, ejecutar:
+
+```bash
+python acceptance/scripts/acceptance_feature_2.py
+```
+
+El script crea una red pequeña y comprueba la red vacía, el alcance normal,
+un destino alcanzable, el destino desconectado `Casa D`, los identificadores
+inexistentes y la falta del origen. Cada caso imprime lo esperado, lo obtenido
+y `PASÓ/FALLÓ`.
+
+Las decisiones de algoritmo, alcance y casos borde están documentadas en
+[`docs/diseno.md`](docs/diseno.md). La evidencia de la ejecución completa se
+guardará en [`docs/evidencia-f2.txt`](docs/evidencia-f2.txt) después de
+ejecutar el script con el backend de Feature 2 integrado.
