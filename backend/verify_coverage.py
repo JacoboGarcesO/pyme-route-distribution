@@ -143,6 +143,43 @@ expect_value(
     ),
 )
 
+# --- T15: empty network and origin without exits ------------------------------
+
+section("BLOQUE 3 - Red vacía y origen sin salidas (T15)")
+
+expect_error(
+    "B4 - red vacía: cualquier origen no existe",
+    OriginNotFound,
+    lambda: visit_order(Graph(), UNKNOWN_UUID),
+)
+expect_error(
+    "B4 - red vacía: la consulta con destino también falla por el origen",
+    OriginNotFound,
+    lambda: reachability(Graph(), UNKNOWN_UUID, UNKNOWN_UUID),
+)
+expect_value(
+    "B5 - origen sin salidas (CasaA): solo se visita a sí mismo",
+    ["CasaA"],
+    lambda: order_labels("CasaA"),
+)
+expect_value(
+    "B5 - origen sin salidas: la lista de alcanzables queda vacía",
+    [],
+    lambda: order_labels("CasaA")[1:],
+)
+expect_value(
+    "B5 - origen aislado (CasaD): solo se visita a sí mismo",
+    ["CasaD"],
+    lambda: order_labels("CasaD"),
+)
+def single_point_visits():
+    lonely = Graph()
+    only = lonely.add_point("Solo", "warehouse")
+    return len(visit_order(lonely, only.id))
+
+
+expect_value("Una red con un solo punto y sin conexiones no falla", 1, single_point_visits)
+
 section("RESUMEN")
 passed = sum(results)
 print(f"{passed}/{len(results)} escenarios pasaron")
