@@ -684,3 +684,40 @@ Se agrega a la red de ejemplo un **punto aislado**: `CasaD` ("Casa D", tipo `pic
 
 - `CasaD` existe solo en la semilla. Quien arme la red a mano puede obtener el mismo caso creando un punto sin conexiones, que la API ya permite desde F1.
 - El README sigue diciendo que la semilla tiene 15 puntos y ahora son 16: es una corrección pendiente en el README de F2.
+
+---
+
+## T09 · Casos borde de la cobertura (Feature 2)
+
+### Cómo se leen
+
+- Salvo donde dice "red vacía", la red es la de ejemplo con `CasaD` (T07). Las etiquetas (`BOD`, `C10K5`, `CasaA`...) son las de T11.
+- La consulta se valida **en este orden** y se informa el primer error: falta `origin`, el origen existe, el destino existe, y solo entonces se recorre la red.
+- Las respuestas de negocio (aunque sean "no") son 200; los errores usan el formato y los códigos de F1 (T06 de F2).
+
+### Casos
+
+| Id | Caso | Consulta | Resultado esperado | HTTP | `code` |
+|---|---|---|---|---|---|
+| B1 | Falta el origen (ausente, vacío o solo espacios) | `GET /coverage`, `?origin=` o `?origin=%20` | Error: el parámetro `origin` es obligatorio | 400 | `MISSING_DATA` |
+| B2 | Origen con formato de UUID inválido | `?origin=abc` | Error: el punto de origen no existe | 404 | `ORIGIN_NOT_FOUND` |
+| B3 | Origen con UUID válido que no está en la red | `?origin=<UUID no registrado>` | Error: el punto de origen no existe | 404 | `ORIGIN_NOT_FOUND` |
+| B4 | Red vacía, con origen indicado | `?origin=<cualquier UUID>` | Error: ningún origen existe. Sin origen, es B1 | 404 | `ORIGIN_NOT_FOUND` |
+| B5 | Origen sin conexiones salientes | `?origin=CasaA` | Respuesta válida: `reachable` es `[]` y `visit_order` solo trae al origen | 200 | — |
+| B6 | Destino desconectado | `?origin=BOD&destination=CasaD` | Respuesta válida: `reachable: false` con `reason` | 200 | — |
+| B7 | Destino inexistente o con formato inválido | `?origin=BOD&destination=<UUID no registrado>` | Error: el punto de destino no existe | 404 | `DESTINATION_NOT_FOUND` |
+| B8 | Destino igual al origen | `?origin=BOD&destination=BOD` | `reachable: true` (camino de cero saltos, T05 regla 5). También si el origen no tiene salidas | 200 | — |
+| B9 | Ciclo presente (`C10K5` y `C10K6` se conectan en ambos sentidos) | `?origin=BOD` | El recorrido termina; cada punto aparece una sola vez en `visit_order` | 200 | — |
+| B10 | Conexión de un solo sentido | `?origin=C11K6&destination=CasaA` y la inversa `?origin=CasaA&destination=C11K6` | La ida es `reachable: true`; la vuelta, `reachable: false` (T05 regla 1) | 200 | — |
+| B11 | Destino vacío | `?origin=BOD&destination=` | Se ignora: equivale a consultar sin destino y devuelve la lista de alcanzables | 200 | — |
+| B12 | Origen y destino inexistentes a la vez | `?origin=<no registrado>&destination=<no registrado>` | Se informa solo el origen, por el orden de validación | 404 | `ORIGIN_NOT_FOUND` |
+
+### Reglas que salen de los casos
+
+- **"No alcanzable" y "sin salidas" no son errores** (B5, B6, B10): la consulta es válida y la respuesta es que no hay camino.
+- **Un UUID inválido se trata como inexistente** (B2, B7): el coordinador no necesita distinguir entre "mal escrito" y "no registrado", y el mensaje dice cuál de los dos puntos falla.
+- **El origen siempre es alcanzable desde sí mismo** (B8), así que `destination` igual a `origin` nunca falla.
+
+### Dónde se verifica
+
+`backend/verify_coverage.py`: el núcleo con los casos B3 a B10 (T16) y la API con los códigos HTTP de B1 a B12 (T18).
