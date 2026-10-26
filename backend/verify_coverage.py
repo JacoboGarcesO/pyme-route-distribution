@@ -91,6 +91,58 @@ expect_value(
     lambda: "CasaD" in order_labels("BOD"),
 )
 
+# --- T14: origin and destination validation ----------------------------------
+
+section("BLOQUE 2 - Validar origen y destino (T14)")
+
+bod_id = points["BOD"].id
+
+
+def message_of(action):
+    try:
+        action()
+    except Exception as exc:
+        return exc.message
+    return None
+
+
+expect_error(
+    "B2 - origen con formato de UUID inválido",
+    OriginNotFound,
+    lambda: visit_order(graph, NOT_A_UUID),
+)
+expect_error(
+    "B3 - origen con UUID válido que no está en la red",
+    OriginNotFound,
+    lambda: visit_order(graph, UNKNOWN_UUID),
+)
+expect_error(
+    "B7 - destino con formato de UUID inválido",
+    DestinationNotFound,
+    lambda: reachability(graph, bod_id, NOT_A_UUID),
+)
+expect_error(
+    "B7 - destino con UUID válido que no está en la red",
+    DestinationNotFound,
+    lambda: reachability(graph, bod_id, UNKNOWN_UUID),
+)
+expect_error(
+    "B12 - origen y destino inexistentes: se informa el origen",
+    OriginNotFound,
+    lambda: reachability(graph, UNKNOWN_UUID, UNKNOWN_UUID),
+)
+origin_message = message_of(lambda: reachability(graph, UNKNOWN_UUID, bod_id))
+destination_message = message_of(lambda: reachability(graph, bod_id, UNKNOWN_UUID))
+expect_value(
+    "Los mensajes de origen y destino inexistente dicen cuál falla",
+    (True, True, True),
+    lambda: (
+        origin_message.startswith("El punto de origen"),
+        destination_message.startswith("El punto de destino"),
+        origin_message != destination_message,
+    ),
+)
+
 section("RESUMEN")
 passed = sum(results)
 print(f"{passed}/{len(results)} escenarios pasaron")
