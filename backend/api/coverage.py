@@ -1,20 +1,18 @@
 """GET /coverage: destinos alcanzables desde un origen (T17, docs/api.md)."""
 
-from flask import Blueprint, current_app, request
+from flask import Blueprint, current_app
 
+from api.params import query_arg
 from domain.coverage import find_point, visit_order
-from domain.errors import DestinationNotFound, MissingData
+from domain.errors import DestinationNotFound
 
 coverage_bp = Blueprint("coverage", __name__)
 
 
 @coverage_bp.get("/coverage")
 def get_coverage():
-    origin_id = request.args.get("origin", "").strip()
-    if not origin_id:
-        raise MissingData("El parámetro 'origin' es obligatorio.")
-
-    destination_id = request.args.get("destination", "").strip() or None
+    origin_id = query_arg("origin", required=True)
+    destination_id = query_arg("destination")
     graph = current_app.extensions["graph"]
     order = visit_order(graph, origin_id)
     points = {str(point.id): point for point in graph.list_points()}
