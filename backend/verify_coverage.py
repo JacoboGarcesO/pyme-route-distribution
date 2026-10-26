@@ -180,6 +180,43 @@ def single_point_visits():
 
 expect_value("Una red con un solo punto y sin conexiones no falla", 1, single_point_visits)
 
+# --- T09: destination equal to origin, cycles and one-way streets -------------
+
+section("BLOQUE 4 - Destino igual al origen, ciclos y un solo sentido (T09)")
+
+expect_value("B8 - destino igual al origen", (True, None), lambda: check("BOD", "BOD"))
+expect_value(
+    "B8 - destino igual al origen, aunque no tenga salidas",
+    (True, None),
+    lambda: check("CasaD", "CasaD"),
+)
+expect_value(
+    "B9 - ciclo: el recorrido desde BOD termina con 15 puntos",
+    15,
+    lambda: len(order_labels("BOD")),
+)
+expect_value(
+    "B9 - ciclo: ningún punto se repite en el orden de visita",
+    True,
+    lambda: len(order_labels("BOD")) == len(set(order_labels("BOD"))),
+)
+expect_value(
+    "B9 - ciclo C10K5 y C10K6: cada uno alcanza al otro",
+    ((True, None), (True, None)),
+    lambda: (check("C10K5", "C10K6"), check("C10K6", "C10K5")),
+)
+expect_value("B10 - un sentido: C11K6 llega a CasaA", (True, None), lambda: check("C11K6", "CasaA"))
+expect_value(
+    "B10 - un sentido: CasaA no llega a C11K6",
+    (False, "No hay un camino dirigido desde 'Casa A' hasta 'Calle 11 con Carrera 6'."),
+    lambda: check("CasaA", "C11K6"),
+)
+expect_value(
+    "Transitividad: BOD llega a CasaA sin conexión directa",
+    (True, None),
+    lambda: check("BOD", "CasaA"),
+)
+
 section("RESUMEN")
 passed = sum(results)
 print(f"{passed}/{len(results)} escenarios pasaron")
