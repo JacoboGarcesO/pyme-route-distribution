@@ -720,4 +720,46 @@ Se agrega a la red de ejemplo un **punto aislado**: `CasaD` ("Casa D", tipo `pic
 
 ### Dónde se verifica
 
-`backend/verify_coverage.py`: el núcleo con los casos B3 a B10 (T16) y la API con los códigos HTTP de B1 a B12 (T18).
+`backend/verify_coverage.py`: el núcleo con los casos B2 a B10 (T16) y la API con los códigos HTTP de B1 a B12 (T18).
+
+---
+
+## T20 · Dónde mostrar la cobertura (Feature 2)
+
+### Decisión
+
+La cobertura se muestra como una **sección nueva en la pantalla actual**, "Cobertura desde un origen", y no como una pantalla aparte. Es el componente `frontend/src/lib/CoverageView.svelte`, colocado en `App.svelte` entre la vista de la red y la lista de puntos.
+
+### Alternativas
+
+| Criterio | Sección en la pantalla actual | Pantalla aparte |
+|---|---|---|
+| Lista de puntos para elegir origen y destino | Ya está cargada en `App` y se pasa como parámetro | Hay que volver a cargarla o compartirla entre pantallas |
+| Navegación | Ninguna | Un enrutador (librería nueva o enrutado manual) para un solo formulario |
+| Flujo de la demo (brief: registrar la red, verificar cobertura, pedir una ruta) | Todo a la vista, sin cambiar de pantalla | El despachador va y vuelve para ver la red |
+| Cambios al agregar F3 | Otra sección al lado | Otra pantalla más y una barra de navegación |
+| Tamaño de la página | Crece: formularios, red, cobertura y tabla de puntos | Cada pantalla es corta |
+
+### Por qué
+
+1. **Reutiliza lo que ya existe.** La sección usa `ErrorMessage` para los errores, el cliente `request()` de `api.js` (`getCoverage`) y `pointTypeLabel`; los errores de cobertura se ven igual que los de F1 y no hay otro formato.
+2. **Sin dependencias nuevas.** F1 es una sola pantalla sin enrutador; agregar uno para un formulario sería más código para mantener.
+3. **Sigue el criterio de éxito del cliente.** El despachador registra una red pequeña y verifica cobertura en el mismo lugar donde la ve.
+4. **No hay roles que separar.** El brief excluye la autenticación, así que el coordinador y el despachador pueden compartir pantalla sin ocultar nada.
+
+### Qué muestra la sección
+
+- Un selector de origen y uno de destino opcional, con los puntos de la red (nombre, tipo y UUID corto, porque los nombres pueden repetirse).
+- Sin destino: la lista de destinos alcanzables y el orden de visita (T23).
+- Con destino alcanzable: "Sí se puede llegar al destino desde este origen".
+- Con destino no alcanzable: el mensaje "No se puede llegar al destino desde este origen" y la razón que devuelve la API.
+- Sin puntos en la red: un aviso para registrar puntos y conexiones primero.
+
+### Verificación
+
+Con el backend y la semilla de T07 en el navegador: desde `Bodega central` sin destino, "Se pueden alcanzar 14 destinos" y `Casa D` no figura entre ellos; con `Casa D` como destino, el mensaje "No hay un camino dirigido desde 'Bodega central' hasta 'Casa D'".
+
+### Limitaciones
+
+- La página se alarga a medida que se agregan secciones. Si F3 y F4 la hacen incómoda, conviene separar la edición de la red (coordinador) de las consultas (despachador) en F4.
+- Origen o destino inexistente (B2, B3 y B7) no se pueden provocar desde la interfaz, porque los selectores solo ofrecen puntos registrados; esos casos se verifican contra la API.
