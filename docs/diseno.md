@@ -653,3 +653,34 @@ La red de F1 no tiene un punto aislado; la demo agregará uno, `D` (T07 de F2), 
 ### Verificación
 
 El orden de visita de la traza se comparó con el que calcula `visit_order` de `backend/domain/coverage.py` sobre la misma red: es idéntico.
+
+---
+
+## T07 · Punto aislado para la demo (Feature 2)
+
+### Decisión
+
+Se agrega a la red de ejemplo un **punto aislado**: `CasaD` ("Casa D", tipo `pickup_point`), sin conexiones de entrada ni de salida. Vive en `backend/seed.py`, junto a los demás puntos del mapa de T11.
+
+### Por qué
+
+- **El brief de F2 pide manejar destinos desconectados.** En el mapa de F1 todas las casas se alcanzan desde la bodega (lo advierte la sección "Pendiente por revisar" de T11), así que sin un punto aislado no hay forma de mostrar `reachable: false`.
+- **Sin entradas ni salidas, a propósito.** Sin entradas, nadie lo alcanza (T05, regla 7). Sin salidas, si se usara como origen solo se visitaría a sí mismo (T05, regla 6). Con una sola de las dos propiedades se probaría un caso distinto.
+- **Es una casa más.** Mismo tipo y mismo estilo de nombre que `CasaA`, `CasaB` y `CasaC`, para que se lea como un destino de entrega al que no llega ninguna calle.
+
+### Efecto en la red de ejemplo
+
+| Aspecto | Antes | Ahora |
+|---|---|---|
+| Puntos en la semilla | 15 | 16 |
+| Conexiones en la semilla | 28 | 28 (`CasaD` no tiene ninguna) |
+| Puntos que visita BFS desde `BOD` | 15 | 15 (`CasaD` no aparece en `visit_order`) |
+
+- La traza de T08 no cambia: sigue contando los 15 puntos conectados.
+- La consulta desde `BOD` hacia `CasaD` responde 200 con `reachable: false` y la razón "No hay un camino dirigido desde 'Bodega central' hasta 'Casa D'". El nombre `Destino D` de los ejemplos de `docs/api.md` es ilustrativo.
+- La semilla sigue siendo opcional (`SEED_NETWORK=1`). El script de aceptación de F1 no la carga y no se ve afectado.
+
+### Limitaciones
+
+- `CasaD` existe solo en la semilla. Quien arme la red a mano puede obtener el mismo caso creando un punto sin conexiones, que la API ya permite desde F1.
+- El README sigue diciendo que la semilla tiene 15 puntos y ahora son 16: es una corrección pendiente en el README de F2.
