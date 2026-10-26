@@ -1,7 +1,7 @@
 """Seed network: the sample map of docs/mapa_calles_carreras_rutapyme.png (T11).
 
-15 points (the warehouse, 11 street corners and 3 destination houses) and the
-28 directed connections of the map, with distances in km. Two-way streets are
+16 points (the warehouse, 11 street corners, 3 destination houses and the
+isolated Casa D) and the 28 directed connections of the map, with distances in km. Two-way streets are
 two connections with the same cost (docs/diseno.md, rule 3); one-way streets
 are a single connection.
 
@@ -26,6 +26,8 @@ POINTS = [
     ("CasaA", "Casa A", "pickup_point"),
     ("CasaB", "Casa B", "pickup_point"),
     ("CasaC", "Casa C", "pickup_point"),
+    # Isolated on purpose: no connection in or out, so nothing reaches it (F2, T07).
+    ("CasaD", "Casa D", "pickup_point"),
 ]
 
 # origin label, destination label, km. The warehouse sits on Calle 11 with Carrera 5.
