@@ -1,0 +1,18 @@
+
+ESCENARIO: T25 - red vacía
+ESPERABA: HTTP 404 ORIGIN_NOT_FOUND al consultar un origen inexistente
+OBTUVE: Response(status=403, body=None, error='HTTP Error 403: Forbidden')
+RESULTADO: FALLÓ
+
+ESCENARIO: T26 - falta de origen
+ESPERABA: HTTP 400 MISSING_DATA
+OBTUVE: Response(status=403, body=None, error='HTTP Error 403: Forbidden')
+RESULTADO: FALLÓ
+
+ESCENARIO: T25 - preparar red de aceptación
+ESPERABA: HTTP 201 para bodega, destino alcanzable y destino desconectado
+OBTUVE: (Response(status=403, body=None, error='HTTP Error 403: Forbidden'), Response(status=403, body=None, error='HTTP Error 403: Forbidden'), Response(status=403, body=None, error='HTTP Error 403: Forbidden'))
+RESULTADO: FALLÓ
+
+No se pueden ejecutar los escenarios restantes: la API no creó los puntos base.
+Completa/inicia el backend y vuelve a ejecutar el script.
