@@ -1,31 +1,44 @@
+/* Sistema visual de RutaPyme: tokens, tipografía y componentes base. */
 :root {
-  --text: #1f2933;
-  --muted: #616e7c;
-  --bg: #ffffff;
-  --surface: #f5f7fa;
-  --border: #d9e2ec;
+  --brand: #0b2d4f;
+  --brand-2: #1e4f8a;
   --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.14);
+  --text: #0f1b2d;
+  --muted: #5b6b7f;
+  --bg: #f1f4f9;
+  --surface: #ffffff;
+  --surface-2: #f7f9fc;
+  --border: #dbe3ee;
   --ok: #15803d;
-  --error: #b91c1c;
-  --error-bg: #fef2f2;
+  --ok-bg: #ecfdf3;
+  --error: #b42318;
+  --error-bg: #fef3f2;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(15, 27, 45, 0.06), 0 4px 16px rgba(15, 27, 45, 0.05);
 
-  font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
+  font: 15px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --text: #e4e7eb;
-    --muted: #9aa5b1;
-    --bg: #121417;
-    --surface: #1c1f24;
-    --border: #323840;
+  :root:not([data-theme='light']) {
+    --brand: #dbe7f5;
+    --brand-2: #7fb0ea;
     --accent: #60a5fa;
+    --accent-soft: rgba(96, 165, 250, 0.18);
+    --text: #e6ebf2;
+    --muted: #9aa8ba;
+    --bg: #0d1218;
+    --surface: #161c25;
+    --surface-2: #1c2430;
+    --border: #2a3441;
     --ok: #4ade80;
-    --error: #f87171;
-    --error-bg: #2a1515;
+    --ok-bg: #123024;
+    --error: #fca5a5;
+    --error-bg: #2a1616;
   }
 }
 
@@ -34,60 +47,238 @@ body {
   background: var(--bg);
 }
 
-main {
-  max-width: 960px;
+/* Encabezado de página */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-top: 4px solid var(--brand-2);
+  box-shadow: var(--shadow);
+}
+
+.topbar-inner {
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-h2 {
-  margin: 32px 0 12px;
-  font-size: 1.25rem;
-}
-
-form {
-  display: grid;
+.brand {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  padding: 16px;
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--brand);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--brand);
+  letter-spacing: -0.01em;
+}
+
+.brand p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Contenido */
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.stack {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+
+@media (min-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.wide {
+  margin-top: 20px;
+}
+
+/* Tarjetas: cada sección de un componente es una tarjeta */
+main section {
+  min-width: 0;
+  overflow-x: auto;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+}
+
+main section h2 {
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  font-size: 1.05rem;
+  color: var(--brand);
+  border-bottom: 2px solid var(--accent-soft);
+}
+
+main section > p:first-of-type {
+  margin-top: 0;
+}
+
+/* Formularios dentro de tarjetas */
+form {
+  display: grid;
+  gap: 14px;
+  padding: 0;
+  background: transparent;
+  border: 0;
 }
 
 label {
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  font-size: 0.85rem;
   font-weight: 600;
+  color: var(--muted);
 }
 
 input,
-select,
-button {
+select {
   font: inherit;
-  padding: 6px 10px;
+  font-size: 0.95rem;
+  padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  border-radius: 8px;
+  background: var(--surface);
   color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Botones */
 button {
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--brand);
   cursor: pointer;
   justify-self: start;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 button[type='submit'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--brand-2);
+  border-color: var(--brand-2);
+  color: #ffffff;
+}
+
+button[type='submit']:hover:not(:disabled) {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #ffffff;
 }
 
 button:disabled {
-  opacity: 0.6;
-  cursor: progress;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Tablas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93rem;
+}
+
+thead th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: var(--surface-2);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.82em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+/* Mensajes de estado */
+.success,
+.muted {
+  margin: 8px 0 0;
 }
 
 .success {
   color: var(--ok);
-  margin: 8px 0;
+  background: var(--ok-bg);
+  border-left: 4px solid var(--ok);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.muted {
+  color: var(--muted);
 }

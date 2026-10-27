@@ -47,26 +47,42 @@
   refresh()
 </script>
 
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="5" cy="6" r="2.5" />
+          <circle cx="19" cy="18" r="2.5" />
+          <path d="M7.5 6H13a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h5.5" />
+        </svg>
+      </div>
+      <div>
+        <h1>RutaPyme</h1>
+        <p>Red operativa de puntos y trayectos</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <BackendStatus />
+      <button type="button" onclick={refresh}>Actualizar datos</button>
+    </div>
+  </div>
+</div>
+
 <main>
-  <header>
-    <h1>RutaPyme</h1>
-    <p>Red operativa de puntos y trayectos</p>
-    <BackendStatus />
-  </header>
+  <div class="layout">
+    <div class="stack">
+      <PointForm onCreated={refresh} />
+      <ConnectionForm {points} onCreated={refresh} />
+    </div>
+    <div class="stack">
+      <CoverageView {points} />
+      <NetworkView {network} loading={networkLoading} error={networkError} />
+    </div>
+  </div>
 
-  <PointForm onCreated={refresh} />
-  <ConnectionForm {points} onCreated={refresh} />
-
-  <NetworkView {network} loading={networkLoading} error={networkError} />
-
-  <CoverageView {points} />
-
-  <PointsList {points} loading={pointsLoading} error={pointsError} />
-  <button type="button" onclick={refresh}>Actualizar</button>
+  <div class="wide">
+    <PointsList {points} loading={pointsLoading} error={pointsError} />
+  </div>
 </main>
-
-<style>
-  header p {
-    margin: 0 0 8px;
-  }
-</style>

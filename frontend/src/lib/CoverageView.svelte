@@ -140,10 +140,6 @@
   }
   form {
     display: grid;
-    gap: 12px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    gap: 14px;
   }
 </style>
