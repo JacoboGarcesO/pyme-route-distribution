@@ -18,27 +18,52 @@
 
 {#if error}
   <div class="error" role="alert">
-    <p>{error.message}</p>
-    {#if HINTS[error.code]}
-      <p class="hint">{HINTS[error.code]}</p>
-    {/if}
+    <span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></svg></span>
+    <div class="text">
+      <p class="message">{error.message}</p>
+      {#if HINTS[error.code]}
+        <p class="hint">{HINTS[error.code]}</p>
+      {/if}
+    </div>
   </div>
 {/if}
 
 <style>
   .error {
-    color: var(--error);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin: 14px 0 0;
+    padding: 13px 15px;
+    border-radius: 12px;
     background: var(--error-bg);
-    border-left: 4px solid var(--error);
-    padding: 8px 12px;
-    border-radius: 6px;
-    margin: 8px 0;
+    border: 1px solid var(--error-line);
+    animation: shake 0.35s ease both;
+  }
+  .icon {
+    flex-shrink: 0;
+    display: grid;
+    color: var(--error);
+  }
+  .text {
+    min-width: 0;
   }
   p {
     margin: 0;
   }
+  .message {
+    font-weight: 700;
+    color: var(--error);
+    overflow-wrap: anywhere;
+  }
   .hint {
-    color: var(--text);
-    font-size: 0.9em;
+    margin-top: 3px;
+    font-size: 0.88rem;
+    color: #7f1d1d;
+  }
+  @keyframes shake {
+    0%, 100% { transform: none; }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
   }
 </style>

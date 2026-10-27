@@ -12,49 +12,98 @@
   {:else if error}
     <p class="error" role="alert">{error}</p>
   {:else if points.length === 0}
-    <p class="muted">Todavía no hay puntos registrados.</p>
+    <p class="muted empty">Todavía no hay puntos registrados.</p>
   {:else}
-    <table>
-      <thead>
-        <tr><th>Nombre</th><th>Tipo</th><th>Identificador</th></tr>
-      </thead>
-      <tbody>
-        {#each points as point (point.id)}
-          <tr>
-            <td>{point.name}</td>
-            <td>{pointTypeLabel(point.type)}</td>
-            <td><code>{point.id}</code></td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Nombre</th><th>Tipo</th><th>Identificador</th></tr>
+        </thead>
+        <tbody>
+          {#each points as point (point.id)}
+            <tr>
+              <td>
+                <span class="name-cell">
+                  <span class="avatar {point.type}" aria-hidden="true">{point.name.charAt(0).toUpperCase()}</span>
+                  <span class="name">{point.name}</span>
+                </span>
+              </td>
+              <td><span class="badge {point.type}">{pointTypeLabel(point.type)}</span></td>
+              <td><code title={point.id}>{point.id}</code></td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
   {/if}
 </section>
 
 <style>
   .muted {
     color: var(--muted);
+    margin: 0;
+  }
+  .empty {
+    padding: 18px;
+    border-radius: 12px;
+    border: 1.5px dashed var(--border-strong);
+    background: var(--surface-2);
+    text-align: center;
   }
   .error {
+    margin: 0;
+    padding: 13px 15px;
+    border-radius: 12px;
+    font-weight: 700;
     color: var(--error);
     background: var(--error-bg);
-    padding: 8px 12px;
-    border-radius: 6px;
+    border: 1px solid var(--error-line);
+  }
+  .table-wrap {
+    overflow-x: auto;
   }
   table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 12px;
+    min-width: 560px;
   }
-  th,
-  td {
-    text-align: left;
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--border);
+  .name-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+  .avatar.warehouse {
+    color: var(--warehouse-ink);
+    background: var(--warehouse-soft);
+  }
+  .avatar.neighborhood {
+    color: var(--neighborhood-ink);
+    background: var(--neighborhood-soft);
+  }
+  .avatar.pickup_point {
+    color: var(--pickup-ink);
+    background: var(--pickup-soft);
+  }
+  .name {
+    font-weight: 700;
+    white-space: nowrap;
   }
   code {
-    font-size: 0.85em;
-    color: var(--muted);
-    word-break: break-all;
+    display: inline-block;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
   }
 </style>
