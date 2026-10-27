@@ -105,6 +105,42 @@ La salida del script de aceptación (23 de 23 escenarios) está en
 [`docs/evidencia-f1.txt`](docs/evidencia-f1.txt). El video de respaldo se
 agregará aquí cuando esté grabado.
 
+## Feature 2 — Cobertura de entregas
+
+La Feature 2 permite consultar los destinos alcanzables desde un origen y
+verificar si existe un camino dirigido hasta un destino específico. Los
+costos no influyen en la cobertura: solo se comprueba la existencia de un
+camino.
+
+El endpoint es:
+
+```text
+GET /coverage?origin=<id>&destination=<id-opcional>
+```
+
+Sin `destination`, devuelve los destinos alcanzables y el orden de visita.
+Con `destination`, devuelve `reachable: true` o `reachable: false` y una
+explicación cuando no existe camino. Un origen o destino inexistente devuelve
+el error correspondiente; si falta `origin`, devuelve `400 MISSING_DATA`.
+
+### Ejecución del script de aceptación de Feature 2
+
+Con el backend iniciado en `http://127.0.0.1:5000` y una red vacía, ejecutar
+desde la raíz del proyecto:
+
+```bash
+python3 acceptance/scripts/acceptance_feature_2.py
+```
+
+El script crea una red pequeña y comprueba la red vacía, el alcance normal,
+un destino alcanzable, el destino desconectado `Casa D`, los identificadores
+inexistentes y la falta del origen. Cada caso imprime lo esperado, lo obtenido
+y `PASÓ/FALLÓ`.
+
+Las decisiones de algoritmo, alcance y casos borde están documentadas en
+[`docs/diseno.md`](docs/diseno.md). La evidencia está en
+[`docs/evidencia-f2.txt`](docs/evidencia-f2.txt).
+
 ## Documentación
 
 - [Guía común](docs/03-guia-comun-estudiantes.md)
