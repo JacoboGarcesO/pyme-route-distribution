@@ -4,6 +4,57 @@ Este documento reúne las decisiones de modelado de la red operativa. Cada secci
 
 ---
 
+## Feature 3 — Ruta de menor costo
+
+### T04 · Elección del algoritmo
+
+Se usará **Dijkstra** para calcular la ruta de menor costo entre un origen y un destino.
+
+La elección se justifica porque todos los costos de la red representan distancias positivas en kilómetros. Dijkstra mantiene para cada punto la mejor distancia conocida desde el origen, selecciona el punto pendiente con menor costo tentativo y relaja sus conexiones salientes. Además, guarda un predecesor por punto para reconstruir la secuencia final de la ruta.
+
+| Alternativa | Adecuación para RutaPyme | Información y costo aproximado |
+|---|---|---|
+| **Dijkstra** | Adecuado para pesos positivos, que son obligatorios en F1 | Tiempo O((V + E) log V) usando una cola de prioridad; memoria O(V + E) |
+| BFS | No adecuado para costos distintos | Minimiza cantidad de saltos, no distancia; puede escoger una ruta más corta en pasos pero más costosa |
+| DFS | No adecuado para optimización | Encuentra una ruta posible, pero no garantiza la de menor costo |
+
+La implementación será propia y usará la lista de adyacencia de `Graph`. No se usará NetworkX para calcular la ruta. La cola de prioridad puede usar la biblioteca estándar de Python; la estructura del grafo y el algoritmo de decisión permanecen bajo control del backend.
+
+La complejidad se expresa con `V` como número de puntos y `E` como número de conexiones dirigidas. La consulta termina cuando se extrae el destino con su menor costo definitivo o cuando no quedan puntos alcanzables por explorar.
+
+### T05 · Significado de una ruta válida
+
+Una ruta válida es una secuencia de puntos que comienza en el origen, termina en el destino y sigue únicamente conexiones dirigidas registradas. El costo total es la suma de los costos de sus conexiones, calculada con `Decimal`.
+
+- El origen y el destino deben existir en el grafo.
+- El origen cuenta como una ruta válida hacia sí mismo: la secuencia contiene solo ese punto y el costo total es `0` km. Esta es una consulta válida, no un auto-lazo, porque no se está creando una conexión.
+- Si no existe un camino dirigido entre origen y destino, la respuesta de negocio es que no hay ruta; no se inventan conexiones inversas.
+- Los costos influyen en la selección: se elige el menor costo total, no la menor cantidad de saltos.
+- Si dos rutas tienen el mismo costo total, se conserva la primera que establezca el algoritmo según el orden estable de los vecinos. El desempate no cambia el costo mínimo.
+- Los ciclos no provocan recorridos infinitos: Dijkstra conserva la mejor distancia conocida y no actualiza un punto cuando la nueva alternativa no es estrictamente menor.
+
+Por ejemplo, si existen `Bodega→A→Destino` con costo total de 9 km y `Bodega→B→C→Destino` con costo total de 7 km, se devuelve la segunda ruta aunque tenga un salto adicional. Si existe `B→C` pero no `C→B`, C es alcanzable desde B, pero B no es alcanzable desde C por esa conexión.
+
+### T19 · Ubicación de la consulta en la interfaz
+
+La consulta de ruta se mostrará como una **sección dentro de la pantalla principal de operación**, debajo de la configuración de la red y junto a la consulta de cobertura de F2. No se creará una pantalla separada.
+
+Esta ubicación permite que el despachador siga un flujo único: revisar los puntos disponibles, seleccionar origen y destino, consultar cobertura si lo necesita y solicitar la ruta de menor costo sin perder el contexto de la red.
+
+La sección reutilizará el cliente de API y el componente de mensajes de error existentes. Los selectores se cargarán desde los puntos devueltos por el backend; la ruta y el costo mostrado siempre vendrán de `GET /shortest-path`, nunca de datos escritos en el frontend.
+
+La interfaz mostrará:
+
+1. punto de origen;
+2. punto de destino;
+3. secuencia de puntos de la ruta;
+4. costo total en kilómetros;
+5. mensaje claro cuando no exista ruta o haya un error de validación.
+
+La visualización de la red seguirá usando únicamente los datos calculados por el backend. Si se incorpora un dibujo, NetworkX solo podrá utilizarse para representarlo, nunca para decidir la ruta.
+
+---
+
 ## T06 · Dirección de la red
 
 ### Decisión
