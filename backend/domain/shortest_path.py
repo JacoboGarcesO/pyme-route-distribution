@@ -5,7 +5,9 @@ from decimal import Decimal
 from itertools import count
 from typing import NamedTuple
 
-from domain.graph import Point, format_cost
+from domain.coverage import find_point
+from domain.errors import DestinationNotFound, OriginNotFound
+from domain.graph import Connection, Point, format_cost
 
 
 class PathResult(NamedTuple):
@@ -79,3 +81,25 @@ def reconstruct_path(pred, origin_id, destination_id):
         path.append(pred[path[-1]])
     path.reverse()
     return path
+
+
+def shortest_path(graph, origin_id, destination_id):
+    """Ruta de menor costo de `origin_id` a `destination_id` como `PathResult` (T12).
+
+    Valida primero el origen y luego el destino con las excepciones de F1
+    (`OriginNotFound`, `DestinationNotFound`): un UUID inválido cuenta como
+    inexistente. Que no haya camino dirigido NO es un error: devuelve
+    `found=False` con `reason`. Origen igual al destino es una ruta de un punto
+    con costo 0 (T05).
+    """
+    origin = find_point(graph, origin_id, OriginNotFound, "punto de origen")
+    destination = find_point(graph, destination_id, DestinationNotFound, "punto de destino")
+    dist, pred = dijkstra(graph, origin.id, destination.id)
+    if destination.id not in dist:
+        reason = f"No hay un camino dirigido desde '{origin.name}' hasta '{destination.name}'."
+        return PathResult(origin, destination, False, [], [], None, reason)
+    ids = reconstruct_path(pred, origin.id, destination.id)
+    points = {point.id: point for point in graph.list_points()}
+    costs = [graph.neighbors(a)[b] for a, b in zip(ids, ids[1:])]
+    connections = [Connection(a, b, cost) for (a, b), cost in zip(zip(ids, ids[1:]), costs)]
+    return PathResult(origin, destination, True, [points[i] for i in ids], connections, dist[destination.id])
