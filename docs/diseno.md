@@ -35,6 +35,27 @@ Una ruta válida es una secuencia de puntos que comienza en el origen, termina e
 
 Por ejemplo, si existen `Bodega→A→Destino` con costo total de 9 km y `Bodega→B→C→Destino` con costo total de 7 km, se devuelve la segunda ruta aunque tenga un salto adicional. Si existe `B→C` pero no `C→B`, C es alcanzable desde B, pero B no es alcanzable desde C por esa conexión.
 
+### T08 · Casos borde de la ruta de menor costo
+
+Consulta: `GET /shortest-path?origin=<id>&destination=<id>`. Los puntos se validan en orden: primero el origen y después el destino (igual que en F2). Que no exista ruta es una respuesta de negocio (200), no un error.
+
+| Id | Caso | Resultado esperado | HTTP | `code` / `found` |
+|---|---|---|---|---|
+| R1 | Falta `origin` o `destination` (o está vacío) | Rechazar: "El parámetro 'X' es obligatorio." | 400 | `MISSING_DATA` |
+| R2 | Origen con UUID inválido o inexistente | Rechazar: "El punto de origen 'X' no existe." | 404 | `ORIGIN_NOT_FOUND` |
+| R3 | Destino con UUID inválido o inexistente | Rechazar: "El punto de destino 'X' no existe." | 404 | `DESTINATION_NOT_FOUND` |
+| R4 | Red vacía | Cualquier origen no existe | 404 | `ORIGIN_NOT_FOUND` |
+| R5 | Origen y destino inexistentes a la vez | Se informa el origen | 404 | `ORIGIN_NOT_FOUND` |
+| R6 | Origen igual al destino | Ruta de un solo punto, costo `"0"` y sin conexiones recorridas (T05) | 200 | `found: true` |
+| R7 | No existe camino dirigido (incluye destino aislado y el sentido contrario de una calle de un solo sentido) | `found: false`, `path: []`, `total_cost_km: null` y `reason` con los nombres | 200 | `found: false` |
+| R8 | Origen aislado (sin salidas) con otro destino | Igual que R7 | 200 | `found: false` |
+| R9 | Ciclo en la red | Termina; cada punto se fija una sola vez | 200 | `found: true` |
+| R10 | Dos rutas: una con menos saltos y otra con menor costo | Se devuelve la de menor costo | 200 | `found: true` |
+| R11 | Costos decimales (p. ej. `0.1` + `0.2`) | Suma exacta con `Decimal`: `"0.3"`, nunca `0.30000000000000004` | 200 | `found: true` |
+| R12 | Empate de costo entre dos rutas | Se conserva la primera que fija el algoritmo (vecinos por nombre); el costo es el mismo | 200 | `found: true` |
+
+Formato de la respuesta 200 (`PathResult.to_dict()`): `origin_id`, `destination_id`, `found`, `path` (puntos en orden origen→destino), `connections` (tramos recorridos con su `cost_km`), `total_cost_km` (texto decimal, `null` si no hay ruta) y `reason` (solo si `found` es `false`).
+
 ### T19 · Ubicación de la consulta en la interfaz
 
 La consulta de ruta se mostrará como una **sección dentro de la pantalla principal de operación**, debajo de la configuración de la red y junto a la consulta de cobertura de F2. No se creará una pantalla separada.
