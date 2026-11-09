@@ -73,33 +73,33 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 - **Entregable:** tabla en `docs/diseno.md` con costos tentativos, nodo seleccionado, actualizaciones y predecesores.
 - **Hecho cuando:** se reconstruye la ruta final y se comprueba su costo acumulado.
 
-### [ ] T08 · Definir casos borde (30 min) · **Jacobo**
+### [x] T08 · Definir casos borde (30 min) · **Jacobo**
 - **Entregable:** lista con origen inexistente, destino inexistente, red vacía, origen igual a destino, ruta inexistente, nodo aislado, ciclo y costos positivos con decimales.
 - **Hecho cuando:** cada caso tiene respuesta, mensaje y código esperado.
 
 ## Bloque 2 — Núcleo Python
 
-### [ ] T09 · Diseñar el resultado de ruta (30 min) · **Jacobo**
+### [x] T09 · Diseñar el resultado de ruta (30 min) · **Jacobo**
 - **Entregable:** modelo o estructura con origen, destino, secuencia de puntos, costo total y, si aplica, explicación.
 - **Hecho cuando:** puede serializarse sin perder precisión decimal.
 
-### [ ] T10 · Implementar la búsqueda de menor costo (60 min) · **Jacobo**
+### [x] T10 · Implementar la búsqueda de menor costo (60 min) · **Jacobo**
 - **Entregable:** función en `backend/domain/shortest_path.py` que use la lista de adyacencia y pesos `Decimal`.
 - **Hecho cuando:** devuelve el costo mínimo y no confunde menor número de saltos con menor costo.
 
-### [ ] T11 · Guardar predecesores y reconstruir la ruta (60 min) · **Jacobo**
+### [x] T11 · Guardar predecesores y reconstruir la ruta (60 min) · **Jacobo**
 - **Entregable:** reconstrucción de la secuencia desde el destino hasta el origen.
 - **Hecho cuando:** la ruta devuelta contiene los puntos en orden origen→destino.
 
-### [ ] T12 · Validar origen, destino y ruta inexistente (45 min) · **Jacobo**
+### [x] T12 · Validar origen, destino y ruta inexistente (45 min) · **Jacobo**
 - **Entregable:** reutilización de errores existentes para puntos inexistentes y resultado claro para una ruta no encontrada.
 - **Hecho cuando:** no se confunde un error de entrada con una decisión válida de negocio.
 
-### [ ] T13 · Verificar precisión y costos acumulados (45 min) · **Jacobo**
+### [x] T13 · Verificar precisión y costos acumulados (45 min) · **Jacobo**
 - **Entregable:** pruebas del uso de `Decimal`, costos positivos y suma exacta.
 - **Hecho cuando:** los resultados conservan el formato definido por la API.
 
-### [ ] T14 · Verificación del núcleo en consola (45 min) · **Jacobo**
+### [x] T14 · Verificación del núcleo en consola (45 min) · **Jacobo**
 - **Entregable:** script que ejercite el caso normal y todos los casos borde de T08.
 - **Hecho cuando:** imprime esperado, obtenido y PASÓ/FALLÓ.
 
