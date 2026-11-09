@@ -42,11 +42,13 @@ class PathResult(NamedTuple):
 def dijkstra(graph, origin_id, destination_id):
     """Costo mínimo de `origin_id` a cada punto, parando al fijar `destination_id` (T10).
 
-    Devuelve {UUID: Decimal} con los costos definitivos hallados. Usa la lista de
+    Devuelve `(dist, pred)`: {UUID: Decimal} con los costos hallados y {UUID: UUID}
+    con el predecesor de cada punto en su mejor ruta (T11). Usa la lista de
     adyacencia de `Graph` (`neighbors`, en orden de nombre) y suma con `Decimal`.
     Es correcto porque todo costo es > 0 (T07). Tiempo O((V + E) log V).
     """
     dist = {origin_id: Decimal(0)}
+    pred = {}
     done = set()
     ticket = count()  # desempata costos iguales por orden de inserción: resultado estable
     heap = [(Decimal(0), next(ticket), origin_id)]
@@ -62,5 +64,18 @@ def dijkstra(graph, origin_id, destination_id):
             # Solo mejora estricta: así los empates conservan la primera ruta y los ciclos terminan.
             if neighbor not in dist or new_cost < dist[neighbor]:
                 dist[neighbor] = new_cost
+                pred[neighbor] = current
                 heapq.heappush(heap, (new_cost, next(ticket), neighbor))
-    return dist
+    return dist, pred
+
+
+def reconstruct_path(pred, origin_id, destination_id):
+    """UUIDs de la ruta en orden origen→destino, siguiendo los predecesores hacia atrás (T11).
+
+    El destino debe ser alcanzable (estar en `dist`); si es el origen devuelve solo ese punto.
+    """
+    path = [destination_id]
+    while path[-1] != origin_id:
+        path.append(pred[path[-1]])
+    path.reverse()
+    return path
