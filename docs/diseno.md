@@ -353,3 +353,464 @@ En total hay 15 nodos y 28 aristas dirigidas.
 - **Destino no alcanzable (F2).** En este mapa todas las casas destino se alcanzan desde la bodega. Para probar "destino desconectado" hará falta agregar un punto aislado o quitar una arista en la demostración.
 - **"Menos saltos no es menor costo" (F3).** Los costos actuales no muestran todavía un caso claro de dos rutas con distinto número de saltos y distinto costo. Se debe ajustar algún peso antes de F3.
 - **Tipo de cada nodo.** La lista cerrada de T09 es `warehouse`, `neighborhood` y `pickup_point`. La bodega es `warehouse` y las casas destino encajan como `pickup_point`, pero las esquinas no tienen un tipo claro. Hay que decidir cómo clasificarlas.
+
+---
+
+## T12 · Traza manual de las operaciones
+
+### Alcance de la traza
+
+La traza usa un **subconjunto de 5 nodos** del mapa de T11 (opción A). Incluye un par de ida y vuelta con el mismo costo, una arista de un solo sentido, una casa destino con su acceso y un punto sin conexiones salientes.
+
+| Etiqueta | Qué es | Tipo usado en la traza |
+|---|---|---|
+| `BOD` | Bodega | `warehouse` |
+| `C11K6` | Esquina Calle 11 con Carrera 6 | `neighborhood` (provisional) |
+| `C10K5` | Esquina Calle 10 con Carrera 5 | `neighborhood` (provisional) |
+| `C10K6` | Esquina Calle 10 con Carrera 6 | `neighborhood` (provisional) |
+| `CasaA` | Casa destino A | `pickup_point` |
+
+El tipo de las esquinas sigue pendiente de decisión (ver "Pendiente por revisar" en T11). En la traza se usa `neighborhood` solo para poder ejecutar los pasos. Las etiquetas representan el UUID que el sistema genera en cada alta.
+
+### Notación
+
+El estado es la lista de adyacencia `{origen: {destino: km}}` de T08. Un punto recién creado aparece con un diccionario vacío. Las llamadas siguen la interfaz de `Graph` de `api.md`; los costos se envían como texto.
+
+### Parte 1: crear puntos
+
+| Paso | Operación | Estado después | Resultado |
+|---|---|---|---|
+| 1 | `add_point("Bodega", warehouse)` | `{BOD: {}}` | Aceptado (P4). Devuelve el UUID de `BOD` |
+| 2 | `add_point("Esquina C11-K6", neighborhood)` | `{BOD: {}, C11K6: {}}` | Aceptado |
+| 3 | `add_point("Esquina C10-K5", neighborhood)` | `{BOD: {}, C11K6: {}, C10K5: {}}` | Aceptado |
+| 4 | `add_point("Esquina C10-K6", neighborhood)` | `{BOD: {}, C11K6: {}, C10K5: {}, C10K6: {}}` | Aceptado |
+| 5 | `add_point("Casa A", pickup_point)` | `{BOD: {}, C11K6: {}, C10K5: {}, C10K6: {}, CasaA: {}}` | Aceptado |
+
+### Parte 2: crear conexiones válidas
+
+Cada fila agrega una entrada solo bajo el **origen**. La conexión inversa no se crea sola.
+
+| Paso | Operación | Cambio en el estado | Resultado |
+|---|---|---|---|
+| 6 | `BOD → C11K6`, `"0.4"` | `BOD: {C11K6: 0.4}` | Aceptado (C10) |
+| 7 | `C11K6 → BOD`, `"0.4"` | `C11K6: {BOD: 0.4}` | Aceptado: sentido contrario con el mismo costo |
+| 8 | `BOD → C10K5`, `"0.3"` | `BOD: {C11K6: 0.4, C10K5: 0.3}` | Aceptado |
+| 9 | `C10K5 → BOD`, `"0.3"` | `C10K5: {BOD: 0.3}` | Aceptado |
+| 10 | `C10K5 → C10K6`, `"0.4"` | `C10K5: {BOD: 0.3, C10K6: 0.4}` | Aceptado |
+| 11 | `C10K6 → C10K5`, `"0.4"` | `C10K6: {C10K5: 0.4}` | Aceptado |
+| 12 | `C10K6 → C11K6`, `"0.3"` | `C10K6: {C10K5: 0.4, C11K6: 0.3}` | Aceptado. Es de un solo sentido: no existe `C11K6 → C10K6` |
+| 13 | `C11K6 → CasaA`, `"0.1"` | `C11K6: {BOD: 0.4, CasaA: 0.1}` | Aceptado (acceso a la casa) |
+
+**Estado final después del paso 13:**
+
+```
+BOD:   { C11K6: 0.4, C10K5: 0.3 }
+C11K6: { BOD: 0.4,   CasaA: 0.1 }
+C10K5: { BOD: 0.3,   C10K6: 0.4 }
+C10K6: { C10K5: 0.4, C11K6: 0.3 }
+CasaA: { }
+```
+
+Este estado corresponde a las aristas 1, 2, 6, 7, 14, 15, 18 y 26 de la tabla de T11.
+
+### Parte 3: rechazos
+
+En todas las filas el estado queda **idéntico al estado final de la Parte 2**: una operación rechazada no modifica nada. Las reglas se evalúan en el orden de T09.
+
+| Paso | Operación | Regla que rechaza | Resultado (HTTP y `code`) | Cómo se detecta en la estructura |
+|---|---|---|---|---|
+| 14 | `BOD → C11K6`, `"0.4"` | C8 | 409 `DUPLICATE_CONNECTION` | `C11K6` ya es clave de `adj[BOD]` |
+| 15 | `BOD → C11K6`, `"0.9"` | C8 | 409 `DUPLICATE_CONNECTION` | Mismo sentido: es duplicado aunque cambie el costo |
+| 16 | `C11K6 → C10K6`, `"0.5"` | C9 | 409 `INCONSISTENT_COST` | `adj[C10K6][C11K6]` vale 0.3 y el costo nuevo es 0.5. El mensaje indica el 0.3 registrado |
+| 17 | `P99 → BOD`, `"0.2"` | C2 | 404 `ORIGIN_NOT_FOUND` | `P99` no es clave de la estructura |
+| 18 | `BOD → P99`, `"0.2"` | C3 | 404 `DESTINATION_NOT_FOUND` | `P99` no está registrado |
+| 19 | `BOD → BOD`, `"0.2"` | C4 | 422 `SELF_LOOP` | Origen y destino son iguales |
+| 20 | `BOD → CasaA`, `"abc"` | C5 | 400 `INVALID_COST` | El costo no es un decimal |
+| 21 | `BOD → CasaA`, `"-0.5"` | C6 | 422 `NON_POSITIVE_COST` | El costo es menor o igual que 0 |
+| 22 | `BOD → CasaA`, `"0.12345678"` | C7 | 422 `COST_PRECISION` | Tiene 8 decimales y el máximo es 7 |
+| 23 | `P99 → BOD`, `"-1"` | C2 (y C6) | 404 `ORIGIN_NOT_FOUND` | Dos reglas se rompen, pero solo se informa la primera en el orden de T09 |
+
+Notas de la traza:
+
+- En el paso 14 el sentido es el mismo que el del paso 6, por eso es duplicado. En el paso 7, en cambio, el sentido es contrario y se acepta porque el costo coincide.
+- El paso 16 es el caso contrario del paso 7: la conexión inversa ya existe (`C10K6 → C11K6`, 0.3), así que `C11K6 → C10K6` solo es válida con el mismo costo, 0.3.
+- Verificar el paso 16 cuesta una búsqueda directa en dos niveles de diccionario, O(1) en promedio. Esta es la razón principal de elegir diccionarios anidados en T08.
+
+### Parte 4: consultas
+
+| Paso | Consulta | Cómo se obtiene | Resultado |
+|---|---|---|---|
+| 24 | `neighbors(C11K6)` | Se lee `adj[C11K6]`, con 2 entradas, O(grado) | `{BOD: 0.4, CasaA: 0.1}` |
+| 25 | `neighbors(CasaA)` | Se lee `adj[CasaA]` | `{}`: un punto sin salidas es válido, no es un error |
+| 26 | `neighbors(P99)` | `P99` no es clave | Error `PointNotFound` (el núcleo lo lanza; F1 no lo expone por la API) |
+
+La consulta de la red legible (`GET /network`) devolvería, para este estado, cada punto con sus conexiones salientes. El resultado debe coincidir con el estado final de la Parte 2.
+
+### Comprobación
+
+- La traza cubre los tres rechazos que pide la tarea (duplicado: pasos 14 y 15; punto inexistente: 17 y 18; costo inválido: 20 a 22) y otros cinco más.
+- En todos los rechazos el estado no cambia.
+- El estado final coincide con las 8 aristas del mapa de T11 incluidas en el subconjunto.
+- Los pasos de la Parte 3 pueden convertirse directamente en escenarios del script de aceptación (T31).
+## T21 · Framework de la API
+
+### Decisión
+
+La API REST se implementa con **Flask** (versión fijada en `backend/requirements.txt`).
+
+### Alternativas comparadas
+
+| Criterio | Flask | FastAPI |
+|---|---|---|
+| Curva de aprendizaje | Baja: rutas y funciones simples | Media: tipos, modelos Pydantic, asincronía |
+| Validación de entrada | Manual | Automática con modelos Pydantic |
+| Documentación automática | No | Sí (OpenAPI / Swagger) |
+| Control del formato de error | Total, con un solo manejador de errores | Hay que reemplazar el formato por defecto de Pydantic (422 con su propia estructura) |
+| Dependencias | Pocas | Más (Pydantic, Starlette, servidor ASGI) |
+
+### Justificación
+
+- **Las reglas viven en el núcleo, no en el framework.** T09 decide que toda validación la hace la clase `Graph` (P1–P4, C1–C10) para que ninguna vía de entrada corrompa la red. La validación automática de FastAPI duplicaría esas reglas en dos lugares y podría responder antes que el núcleo con otro formato y otro código.
+- **El contrato de errores es propio.** `api.md` fija una forma única `{"error": {"code", "message"}}` y códigos HTTP específicos (400, 404, 409, 422). Con Flask basta un manejador que traduzca las excepciones del núcleo (T25); con FastAPI habría que desactivar o sobrescribir su respuesta 422 por defecto.
+- **El costo es texto decimal.** `cost_km` se recibe como texto y se convierte a `Decimal` en el núcleo. No se gana nada con el tipado automático de FastAPI.
+- **Alcance pequeño.** F1 tiene seis endpoints síncronos y sin autenticación; la asincronía y la documentación automática no aportan valor suficiente para el costo de aprenderlas.
+
+### Limitación aceptada
+
+No hay documentación interactiva automática. La referencia de la API es `docs/api.md`, y el script de aceptación comprueba que el backend la cumple.
+
+### Esqueleto
+
+`backend/app.py` crea la aplicación y expone `GET /health`, que responde `{"status": "ok"}` con código 200.
+
+---
+
+## T26 · Tecnología del frontend
+
+### Decisión
+
+La interfaz es una **aplicación web con Svelte 5 y Vite** (carpeta `frontend/`), que consume el backend Flask real.
+
+### Alternativas comparadas
+
+| Criterio | Streamlit | Web (Svelte + Vite) |
+|---|---|---|
+| Lenguaje | Python, igual que el backend | JavaScript |
+| Velocidad para una primera pantalla | Muy alta | Media |
+| Control de la interfaz y de los mensajes de error | Limitado a sus componentes | Total |
+| Separación frontend / backend | Tentación de llamar al núcleo directamente desde Python | Solo puede hablar con la API por HTTP |
+| Visualización de la red en F4 | Componentes propios o imágenes | Libre (SVG, imagen generada por el backend con NetworkX) |
+
+### Justificación
+
+- **La regla 3 de la guía exige consumir el backend real.** Con un frontend web es imposible saltarse la API: toda la información llega por HTTP, como en la demo con el despachador.
+- **Errores comprensibles.** El contrato devuelve `{"error": {"code", "message"}}`. El cliente `src/lib/api.js` convierte cualquier error en un mensaje para el coordinador, incluido el caso de backend apagado (T28).
+- **Crece hacia F4.** La vista de red y resultados de ruta necesitará control de la presentación que en Streamlit es más difícil.
+
+### Conexión con el backend
+
+En desarrollo, Vite reenvía `/health`, `/points`, `/connections` y `/network` al backend (por defecto `http://127.0.0.1:5000`, configurable con la variable `API_URL`). El navegador ve un solo origen, así que no hace falta CORS en Flask.
+
+### Limitación aceptada
+
+El equipo necesita Node.js además de Python, y el proxy solo existe en el servidor de desarrollo de Vite. Para F1 la demo se hace con `npm run dev`.
+
+### Pantalla inicial
+
+Muestra el estado del backend (`GET /health`) y la tabla de puntos (`GET /points`). Ningún dato está escrito a mano: todo viene de la API.
+
+---
+
+## T06 · Respuestas válidas frente a errores (Feature 2)
+
+### Decisión
+
+En cobertura se separan dos tipos de resultado:
+
+- **Respuesta de negocio:** la consulta fue válida y el sistema tiene una respuesta, aunque la respuesta sea "no". Se devuelve con código 200.
+- **Error:** la consulta no se puede responder porque falta un dato o un punto no existe. Se devuelve con código de error y el mismo formato de F1.
+
+### Casos
+
+| Caso | Resultado | HTTP | `code` |
+|---|---|---|---|
+| Origen válido, sin destino en la consulta | Lista de destinos alcanzables | 200 | — |
+| Origen y destino válidos, destino alcanzable | `reachable: true` | 200 | — |
+| Origen y destino válidos, destino no alcanzable | `reachable: false` con explicación | 200 | — |
+| Falta el parámetro `origin` | Error | 400 | `MISSING_DATA` |
+| Origen inexistente o UUID inválido | Error | 404 | `ORIGIN_NOT_FOUND` |
+| Destino inexistente o UUID inválido | Error | 404 | `DESTINATION_NOT_FOUND` |
+| Red vacía con origen indicado | El origen no existe en la red | 404 | `ORIGIN_NOT_FOUND` |
+| Red vacía sin origen | Falta el parámetro | 400 | `MISSING_DATA` |
+
+### Justificación
+
+- **"No alcanzable" no es un error.** Es el resultado correcto de la consulta, y el despachador necesita verlo como respuesta normal para decidir. Si fuera un 404, el frontend lo trataría como fallo de la aplicación.
+- **Origen o destino inexistente sí es un error.** La consulta no puede responderse, y el mensaje debe decir cuál de los dos falta.
+- **La red vacía se trata como origen inexistente.** Si no hay puntos, ningún origen existe, así que no hace falta un caso aparte.
+
+### Consistencia con F1
+
+Se reutilizan los códigos de `docs/api.md` (`MISSING_DATA`, `ORIGIN_NOT_FOUND`, `DESTINATION_NOT_FOUND`). No se crean códigos nuevos.
+
+---
+
+## T04 · Algoritmo de recorrido: BFS o DFS (Feature 2)
+
+### Decisión
+
+La cobertura se calcula con un **recorrido por capas (BFS)**: una cola, un conjunto de visitados y los vecinos salientes de `Graph` en orden de nombre. La implementación está en `backend/domain/coverage.py`.
+
+### La pregunta que debe responder
+
+"¿Qué destinos se alcanzan desde una bodega?" Es una pregunta de existencia: importa si hay un camino dirigido, no cuánto cuesta ni cuál es el mejor. Por eso el brief de F2 dice que el cliente "no pide todavía la ruta más barata: pide cobertura".
+
+### Comparación
+
+| Criterio | BFS (por capas) | DFS (exploración profunda) |
+|---|---|---|
+| Idea | Visita todos los vecinos del origen, luego los vecinos de esos, y así por niveles | Sigue un camino hasta el fondo y, al no poder seguir, retrocede y prueba otro |
+| Estructura | Cola (primero en entrar, primero en salir) | Pila o recursión |
+| ¿Qué puntos descubre? | Los mismos que DFS | Los mismos que BFS |
+| Tiempo | O(V + E) | O(V + E) |
+| Memoria extra | O(V): visitados y cola (la cola llega al ancho de la red) | O(V): visitados y pila (la pila llega al largo de un camino) |
+| Información extra | Los **saltos mínimos** a cada punto, sin costo adicional | Ningún dato útil: el primer camino que encuentra puede ser larguísimo |
+| Explicación al despachador | "Primero lo más cercano, luego lo siguiente" | Menos intuitivo: salta por toda una calle antes de mirar las demás |
+
+V es el número de puntos y E el de conexiones. Los dos necesitan el conjunto de visitados: la red tiene ciclos (por ejemplo, `C10K5` y `C10K6` se conectan en ambos sentidos) y sin él el recorrido no terminaría.
+
+### Orden de visita sobre la red de F1 (desde `BOD`)
+
+- **BFS** (entre paréntesis, los saltos): `BOD`(0), `C10K5`(1), `C11K6`(1), `C12K5`(1), `C10K6`(2), `C11K7`(2), `C12K6`(2), `CasaA`(2), `C10K7`(3), `C12K7`(3), `CasaC`(3), `C10K8`(4), `C12K8`(4), `C11K8`(5), `CasaB`(5).
+- **DFS**: `BOD`, `C10K5`, `C10K6`, `C10K7`, `C10K8`, `C11K7`, `C11K6`, `C12K6`, `C12K7`, `C12K8`, `C11K8`, `CasaB`, `CasaC`, `CasaA`, `C12K5`.
+
+Los dos descubren los mismos 15 puntos. BFS los recorre "a la redonda"; DFS se va primero por toda la Calle 10 hasta el fondo.
+
+### Por qué BFS
+
+1. **Responde la pregunta de cobertura.** Los dos algoritmos sirven para saber qué se alcanza, así que la decisión se apoya en lo demás.
+2. **Da una explicación natural.** El orden por capas es el que el despachador entiende ("primero los cercanos"), y los saltos mínimos quedan disponibles si hacen falta.
+3. **Es predecible.** Con los vecinos ordenados por nombre, el orden de visita es siempre el mismo, y la traza manual (T08) se puede reproducir y verificar contra la API.
+4. **Tiene el mismo costo que DFS** en tiempo y en memoria, así que no se pierde nada.
+
+### Por qué no sirve para la ruta de menor costo (eso es F3)
+
+BFS minimiza el **número de saltos**, no los kilómetros: menos saltos no significa menor costo. En la red de F1, de `BOD` a `C12K8`:
+
+| Camino | Saltos | Distancia |
+|---|---|---|
+| `BOD` → `C11K6` → `C11K7` → `C12K7` → `C12K8` (el que BFS descubre) | 4 | 1,5 km |
+| `BOD` → `C12K5` → `C12K6` → `C12K7` → `C12K8` (el más barato) | 4 | 1,4 km |
+
+Los dos caminos empatan en saltos, así que BFS no distingue entre ellos y se queda con el primero que encuentra, que cuesta más. Para elegir el de menor distancia hace falta un algoritmo que use los pesos (F3). Por eso la cobertura **no devuelve rutas ni costos**: mezclar las dos necesidades porque "el algoritmo ya estaba ahí" es lo que el brief pide evitar.
+
+### Alternativa descartada y limitaciones
+
+- **DFS:** descartado porque no aporta nada a la cobertura y su orden es menos explicable. Sería igual de válido para saber qué se alcanza.
+- El recorrido no mide distancias en km ni compara caminos. Los saltos que BFS permite calcular no se exponen en la API de F2.
+
+---
+
+## T05 · Qué significa "alcanzable" (Feature 2)
+
+### Decisión
+
+Un punto B es **alcanzable desde A** si existe un camino dirigido de A a B: una secuencia de conexiones, cada una recorrida en su sentido. Solo importa que el camino exista.
+
+### Reglas
+
+1. **Se respeta el sentido de cada conexión.** A→B permite ir de A a B, nunca de B a A. Esto es lo que se decidió en T06 de F1 al modelar la red como dirigida.
+2. **La relación no es simétrica.** Que B sea alcanzable desde A no implica que A lo sea desde B.
+3. **Es transitiva.** Si A→B y B→C existen, C es alcanzable desde A aunque no haya una conexión directa A→C.
+4. **Los costos no influyen.** Una conexión de 0,1 km y una de 5 km cuentan igual. Esa es la diferencia con la ruta de menor costo (F3).
+5. **El origen es alcanzable desde sí mismo** (un camino de cero saltos). Por eso una consulta con `destination` igual a `origin` responde `reachable: true`. En cambio, la lista `reachable` de destinos **no incluye al origen**, porque es la lista de lugares a los que se puede llegar desde él; el origen sí va primero en `visit_order`, porque es donde empieza el recorrido.
+6. **Un punto sin conexiones salientes solo se alcanza a sí mismo.** Su lista `reachable` queda vacía, y no es un error.
+7. **Un punto sin conexiones de entrada** no es alcanzable desde ningún otro punto. Es el caso del destino desconectado de la demo.
+
+### Ejemplo con la red de F1
+
+La pregunta: si existe B→C pero no C→B, ¿C es alcanzable desde B?
+
+- Existe `C11K6` → `CasaA` y no existe `CasaA` → `C11K6`.
+- **`CasaA` es alcanzable desde `C11K6`:** hay un camino de un salto.
+- **`C11K6` no es alcanzable desde `CasaA`:** `CasaA` no tiene conexiones salientes, así que desde ella no se llega a ningún punto.
+
+Y para la transitividad: `BOD` no tiene una conexión directa a `CasaA`, pero sí `BOD` → `C11K6` → `CasaA`, así que `CasaA` es alcanzable desde `BOD`.
+
+### Efecto en la API
+
+No cambia nada: el comportamiento de `GET /coverage` ya sigue estas reglas (`docs/api.md`, Feature 2). Esta sección fija por escrito lo que el código hace.
+
+---
+
+## T08 · Traza manual del recorrido por capas (Feature 2)
+
+### Qué se traza
+
+El recorrido BFS de T04 desde `BOD` sobre la red de F1 (15 puntos y 28 conexiones, `backend/seed.py`). En cada paso se saca un punto de la cola, se miran sus vecinos salientes **en orden de nombre** y los que no estaban visitados entran al final de la cola. Las etiquetas son las de T11 de F1; en el sistema cada punto tiene su UUID.
+
+Reglas del recorrido: se sigue el sentido de cada conexión, los costos no se usan (T05) y un punto visitado no vuelve a entrar a la cola.
+
+### Traza
+
+| Paso | Sale de la cola | Vecinos salientes (por nombre) | Nuevos: entran a la cola | Ya visitados: se ignoran | Cola después |
+|---|---|---|---|---|---|
+| 1 | `BOD` | C10K5, C11K6, C12K5 | C10K5, C11K6, C12K5 | — | C10K5, C11K6, C12K5 |
+| 2 | `C10K5` | BOD, C10K6 | C10K6 | BOD | C11K6, C12K5, C10K6 |
+| 3 | `C11K6` | BOD, C11K7, C12K6, CasaA | C11K7, C12K6, CasaA | BOD | C12K5, C10K6, C11K7, C12K6, CasaA |
+| 4 | `C12K5` | BOD, C12K6 | — | BOD, C12K6 | C10K6, C11K7, C12K6, CasaA |
+| 5 | `C10K6` | C10K5, C10K7, C11K6 | C10K7 | C10K5, C11K6 | C11K7, C12K6, CasaA, C10K7 |
+| 6 | `C11K7` | C10K7, C11K6, C12K7 | C12K7 | C10K7, C11K6 | C12K6, CasaA, C10K7, C12K7 |
+| 7 | `C12K6` | C12K7, CasaC | CasaC | C12K7 | CasaA, C10K7, C12K7, CasaC |
+| 8 | `CasaA` | — | — | — | C10K7, C12K7, CasaC |
+| 9 | `C10K7` | C10K8, C11K7 | C10K8 | C11K7 | C12K7, CasaC, C10K8 |
+| 10 | `C12K7` | C11K7, C12K8 | C12K8 | C11K7 | CasaC, C10K8, C12K8 |
+| 11 | `CasaC` | — | — | — | C10K8, C12K8 |
+| 12 | `C10K8` | C10K7 | — | C10K7 | C12K8 |
+| 13 | `C12K8` | C11K8, CasaB | C11K8, CasaB | — | C11K8, CasaB |
+| 14 | `C11K8` | C10K8, C11K7 | — | C10K8, C11K7 | CasaB |
+| 15 | `CasaB` | — | — | — | — |
+
+### Orden de visita
+
+`BOD → C10K5 → C11K6 → C12K5 → C10K6 → C11K7 → C12K6 → CasaA → C10K7 → C12K7 → CasaC → C10K8 → C12K8 → C11K8 → CasaB`
+
+### Capas (saltos desde `BOD`)
+
+| Saltos | Puntos |
+|---|---|
+| 0 | BOD |
+| 1 | C10K5, C11K6, C12K5 |
+| 2 | C10K6, C11K7, C12K6, CasaA |
+| 3 | C10K7, C12K7, CasaC |
+| 4 | C10K8, C12K8 |
+| 5 | C11K8, CasaB |
+
+### Lo que muestra la traza
+
+- **Los ciclos no provocan bucles.** En el paso 2, `C10K5` mira a `BOD` y lo ignora porque ya está visitado; en los pasos 5 y 6 pasa lo mismo con `C10K5`, `C11K6` y `C10K7`; en el paso 14, `C11K8` ignora a `C10K8` y `C11K7`. Sin el conjunto de visitados, el ciclo `C10K5` ↔ `C10K6` repetiría el recorrido sin terminar.
+- **Un punto se descubre una sola vez**, por el primer camino que lo alcanza. `C12K6` entra a la cola en el paso 3 (desde `C11K6`), así que en el paso 4 `C12K5` lo ve y lo ignora.
+- **Los puntos sin salidas** (`CasaA`, `CasaC`, `CasaB`) salen de la cola sin agregar nada; no es un error, solo no llevan a otros puntos.
+- **El recorrido termina cuando la cola queda vacía** (paso 15). Descubrió 15 puntos: los 14 destinos alcanzables más el origen.
+
+### Destino desconectado (D)
+
+La red de F1 no tiene un punto aislado; la demo agregará uno, `D` (T07 de F2), sin conexiones de entrada ni de salida.
+
+- Ningún punto lo tiene como vecino saliente, así que `D` **nunca entra a la cola** y no aparece en el orden de visita.
+- La consulta de `BOD` hacia `D` responde `reachable: false` con la explicación "No hay un camino dirigido desde 'Bodega central' hasta 'D'", como define `docs/api.md`. Es una respuesta válida, no un error.
+- Si `D` fuera el origen, el recorrido solo lo visitaría a él, y su lista de alcanzables sería `[]`.
+
+### Verificación
+
+El orden de visita de la traza se comparó con el que calcula `visit_order` de `backend/domain/coverage.py` sobre la misma red: es idéntico.
+
+---
+
+## T07 · Punto aislado para la demo (Feature 2)
+
+### Decisión
+
+Se agrega a la red de ejemplo un **punto aislado**: `CasaD` ("Casa D", tipo `pickup_point`), sin conexiones de entrada ni de salida. Vive en `backend/seed.py`, junto a los demás puntos del mapa de T11.
+
+### Por qué
+
+- **El brief de F2 pide manejar destinos desconectados.** En el mapa de F1 todas las casas se alcanzan desde la bodega (lo advierte la sección "Pendiente por revisar" de T11), así que sin un punto aislado no hay forma de mostrar `reachable: false`.
+- **Sin entradas ni salidas, a propósito.** Sin entradas, nadie lo alcanza (T05, regla 7). Sin salidas, si se usara como origen solo se visitaría a sí mismo (T05, regla 6). Con una sola de las dos propiedades se probaría un caso distinto.
+- **Es una casa más.** Mismo tipo y mismo estilo de nombre que `CasaA`, `CasaB` y `CasaC`, para que se lea como un destino de entrega al que no llega ninguna calle.
+
+### Efecto en la red de ejemplo
+
+| Aspecto | Antes | Ahora |
+|---|---|---|
+| Puntos en la semilla | 15 | 16 |
+| Conexiones en la semilla | 28 | 28 (`CasaD` no tiene ninguna) |
+| Puntos que visita BFS desde `BOD` | 15 | 15 (`CasaD` no aparece en `visit_order`) |
+
+- La traza de T08 no cambia: sigue contando los 15 puntos conectados.
+- La consulta desde `BOD` hacia `CasaD` responde 200 con `reachable: false` y la razón "No hay un camino dirigido desde 'Bodega central' hasta 'Casa D'". El nombre `Destino D` de los ejemplos de `docs/api.md` es ilustrativo.
+- La semilla sigue siendo opcional (`SEED_NETWORK=1`). El script de aceptación de F1 no la carga y no se ve afectado.
+
+### Limitaciones
+
+- `CasaD` existe solo en la semilla. Quien arme la red a mano puede obtener el mismo caso creando un punto sin conexiones, que la API ya permite desde F1.
+- El README sigue diciendo que la semilla tiene 15 puntos y ahora son 16: es una corrección pendiente en el README de F2.
+
+---
+
+## T09 · Casos borde de la cobertura (Feature 2)
+
+### Cómo se leen
+
+- Salvo donde dice "red vacía", la red es la de ejemplo con `CasaD` (T07). Las etiquetas (`BOD`, `C10K5`, `CasaA`...) son las de T11.
+- La consulta se valida **en este orden** y se informa el primer error: falta `origin`, el origen existe, el destino existe, y solo entonces se recorre la red.
+- Las respuestas de negocio (aunque sean "no") son 200; los errores usan el formato y los códigos de F1 (T06 de F2).
+
+### Casos
+
+| Id | Caso | Consulta | Resultado esperado | HTTP | `code` |
+|---|---|---|---|---|---|
+| B1 | Falta el origen (ausente, vacío o solo espacios) | `GET /coverage`, `?origin=` o `?origin=%20` | Error: el parámetro `origin` es obligatorio | 400 | `MISSING_DATA` |
+| B2 | Origen con formato de UUID inválido | `?origin=abc` | Error: el punto de origen no existe | 404 | `ORIGIN_NOT_FOUND` |
+| B3 | Origen con UUID válido que no está en la red | `?origin=<UUID no registrado>` | Error: el punto de origen no existe | 404 | `ORIGIN_NOT_FOUND` |
+| B4 | Red vacía, con origen indicado | `?origin=<cualquier UUID>` | Error: ningún origen existe. Sin origen, es B1 | 404 | `ORIGIN_NOT_FOUND` |
+| B5 | Origen sin conexiones salientes | `?origin=CasaA` | Respuesta válida: `reachable` es `[]` y `visit_order` solo trae al origen | 200 | — |
+| B6 | Destino desconectado | `?origin=BOD&destination=CasaD` | Respuesta válida: `reachable: false` con `reason` | 200 | — |
+| B7 | Destino inexistente o con formato inválido | `?origin=BOD&destination=<UUID no registrado>` | Error: el punto de destino no existe | 404 | `DESTINATION_NOT_FOUND` |
+| B8 | Destino igual al origen | `?origin=BOD&destination=BOD` | `reachable: true` (camino de cero saltos, T05 regla 5). También si el origen no tiene salidas | 200 | — |
+| B9 | Ciclo presente (`C10K5` y `C10K6` se conectan en ambos sentidos) | `?origin=BOD` | El recorrido termina; cada punto aparece una sola vez en `visit_order` | 200 | — |
+| B10 | Conexión de un solo sentido | `?origin=C11K6&destination=CasaA` y la inversa `?origin=CasaA&destination=C11K6` | La ida es `reachable: true`; la vuelta, `reachable: false` (T05 regla 1) | 200 | — |
+| B11 | Destino vacío | `?origin=BOD&destination=` | Se ignora: equivale a consultar sin destino y devuelve la lista de alcanzables | 200 | — |
+| B12 | Origen y destino inexistentes a la vez | `?origin=<no registrado>&destination=<no registrado>` | Se informa solo el origen, por el orden de validación | 404 | `ORIGIN_NOT_FOUND` |
+
+### Reglas que salen de los casos
+
+- **"No alcanzable" y "sin salidas" no son errores** (B5, B6, B10): la consulta es válida y la respuesta es que no hay camino.
+- **Un UUID inválido se trata como inexistente** (B2, B7): el coordinador no necesita distinguir entre "mal escrito" y "no registrado", y el mensaje dice cuál de los dos puntos falla.
+- **El origen siempre es alcanzable desde sí mismo** (B8), así que `destination` igual a `origin` nunca falla.
+
+### Dónde se verifica
+
+`backend/verify_coverage.py`: el núcleo con los casos B2 a B10 (T16) y la API con los códigos HTTP de B1 a B12 (T18).
+
+---
+
+## T20 · Dónde mostrar la cobertura (Feature 2)
+
+### Decisión
+
+La cobertura se muestra como una **sección nueva en la pantalla actual**, "Cobertura desde un origen", y no como una pantalla aparte. Es el componente `frontend/src/lib/CoverageView.svelte`, colocado en `App.svelte` entre la vista de la red y la lista de puntos.
+
+### Alternativas
+
+| Criterio | Sección en la pantalla actual | Pantalla aparte |
+|---|---|---|
+| Lista de puntos para elegir origen y destino | Ya está cargada en `App` y se pasa como parámetro | Hay que volver a cargarla o compartirla entre pantallas |
+| Navegación | Ninguna | Un enrutador (librería nueva o enrutado manual) para un solo formulario |
+| Flujo de la demo (brief: registrar la red, verificar cobertura, pedir una ruta) | Todo a la vista, sin cambiar de pantalla | El despachador va y vuelve para ver la red |
+| Cambios al agregar F3 | Otra sección al lado | Otra pantalla más y una barra de navegación |
+| Tamaño de la página | Crece: formularios, red, cobertura y tabla de puntos | Cada pantalla es corta |
+
+### Por qué
+
+1. **Reutiliza lo que ya existe.** La sección usa `ErrorMessage` para los errores, el cliente `request()` de `api.js` (`getCoverage`) y `pointTypeLabel`; los errores de cobertura se ven igual que los de F1 y no hay otro formato.
+2. **Sin dependencias nuevas.** F1 es una sola pantalla sin enrutador; agregar uno para un formulario sería más código para mantener.
+3. **Sigue el criterio de éxito del cliente.** El despachador registra una red pequeña y verifica cobertura en el mismo lugar donde la ve.
+4. **No hay roles que separar.** El brief excluye la autenticación, así que el coordinador y el despachador pueden compartir pantalla sin ocultar nada.
+
+### Qué muestra la sección
+
+- Un selector de origen y uno de destino opcional, con los puntos de la red (nombre, tipo y UUID corto, porque los nombres pueden repetirse).
+- Sin destino: la lista de destinos alcanzables y el orden de visita (T23).
+- Con destino alcanzable: "Sí se puede llegar al destino desde este origen".
+- Con destino no alcanzable: el mensaje "No se puede llegar al destino desde este origen" y la razón que devuelve la API.
+- Sin puntos en la red: un aviso para registrar puntos y conexiones primero.
+
+### Verificación
+
+Con el backend y la semilla de T07 en el navegador: desde `Bodega central` sin destino, "Se pueden alcanzar 14 destinos" y `Casa D` no figura entre ellos; con `Casa D` como destino, el mensaje "No hay un camino dirigido desde 'Bodega central' hasta 'Casa D'".
+
+### Limitaciones
+
+- La página se alarga a medida que se agregan secciones. Si F3 y F4 la hacen incómoda, conviene separar la edición de la red (coordinador) de las consultas (despachador) en F4.
+- Origen o destino inexistente (B2, B3 y B7) no se pueden provocar desde la interfaz, porque los selectores solo ofrecen puntos registrados; esos casos se verifican contra la API.

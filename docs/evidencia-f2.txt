@@ -1,0 +1,47 @@
+
+ESCENARIO: T25 - red vacía
+ESPERABA: HTTP 404 ORIGIN_NOT_FOUND al consultar un origen inexistente
+OBTUVE: Response(status=404, body={'error': {'code': 'ORIGIN_NOT_FOUND', 'message': "El punto de origen 'origin-inexistente' no existe."}}, error='HTTP Error 404: NOT FOUND')
+RESULTADO: PASÓ
+
+ESCENARIO: T26 - falta de origen
+ESPERABA: HTTP 400 MISSING_DATA
+OBTUVE: Response(status=400, body={'error': {'code': 'MISSING_DATA', 'message': "El parámetro 'origin' es obligatorio."}}, error='HTTP Error 400: BAD REQUEST')
+RESULTADO: PASÓ
+
+ESCENARIO: T25 - preparar red de aceptación
+ESPERABA: HTTP 201 para bodega, destino alcanzable y destino desconectado
+OBTUVE: (Response(status=201, body={'id': '6fda0a94-db82-4480-b277-a0422eecf57f', 'name': 'Bodega de aceptación', 'type': 'warehouse'}, error=None), Response(status=201, body={'id': 'f41c6230-dce7-4bba-9c2a-4e3fb314eeb8', 'name': 'Barrio alcanzable', 'type': 'neighborhood'}, error=None), Response(status=201, body={'id': 'c41355a2-0fbe-43a1-bb05-305a0db1b17b', 'name': 'Casa D', 'type': 'pickup_point'}, error=None))
+RESULTADO: PASÓ
+
+ESCENARIO: T25 - conexión de cobertura
+ESPERABA: HTTP 201 para la conexión bodega -> destino
+OBTUVE: Response(status=201, body={'cost_km': '1', 'destination_id': 'f41c6230-dce7-4bba-9c2a-4e3fb314eeb8', 'origin_id': '6fda0a94-db82-4480-b277-a0422eecf57f'}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T25 - alcance normal
+ESPERABA: HTTP 200 con el destino alcanzable en reachable
+OBTUVE: Response(status=200, body={'origin_id': '6fda0a94-db82-4480-b277-a0422eecf57f', 'reachable': [{'id': 'f41c6230-dce7-4bba-9c2a-4e3fb314eeb8', 'name': 'Barrio alcanzable', 'type': 'neighborhood'}], 'visit_order': ['6fda0a94-db82-4480-b277-a0422eecf57f', 'f41c6230-dce7-4bba-9c2a-4e3fb314eeb8']}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T25 - destino alcanzable
+ESPERABA: HTTP 200 y reachable true
+OBTUVE: Response(status=200, body={'destination_id': 'f41c6230-dce7-4bba-9c2a-4e3fb314eeb8', 'origin_id': '6fda0a94-db82-4480-b277-a0422eecf57f', 'reachable': True}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T26 - destino desconectado Casa D
+ESPERABA: HTTP 200, reachable false y explicación
+OBTUVE: Response(status=200, body={'destination_id': 'c41355a2-0fbe-43a1-bb05-305a0db1b17b', 'origin_id': '6fda0a94-db82-4480-b277-a0422eecf57f', 'reachable': False, 'reason': "No hay un camino dirigido desde 'Bodega de aceptación' hasta 'Casa D'."}, error=None)
+RESULTADO: PASÓ
+
+ESCENARIO: T26 - origen inexistente
+ESPERABA: HTTP 404 ORIGIN_NOT_FOUND
+OBTUVE: Response(status=404, body={'error': {'code': 'ORIGIN_NOT_FOUND', 'message': "El punto de origen '00000000-0000-0000-0000-000000000000' no existe."}}, error='HTTP Error 404: NOT FOUND')
+RESULTADO: PASÓ
+
+ESCENARIO: T26 - destino inexistente
+ESPERABA: HTTP 404 DESTINATION_NOT_FOUND
+OBTUVE: Response(status=404, body={'error': {'code': 'DESTINATION_NOT_FOUND', 'message': "El punto de destino '00000000-0000-0000-0000-000000000000' no existe."}}, error='HTTP Error 404: NOT FOUND')
+RESULTADO: PASÓ
+
+RESUMEN: 9/9 escenarios PASARON
