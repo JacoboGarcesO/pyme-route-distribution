@@ -93,6 +93,57 @@ expect_value(
     lambda: [c["cost_km"] for c in shortest_path(graph, pts["A"].id, pts["C"].id).to_dict()["connections"]],
 )
 
+# --- T14: caso normal y casos borde de T08 -----------------------------------
+
+section("BLOQUE 2 - Caso normal: menos saltos no es menor costo (R10)")
+
+# A->D directo cuesta 9 (1 salto); A->B->C->D cuesta 7 (3 saltos).
+demo, d = build("ABCD", [("A", "D", "9"), ("A", "B", "3"), ("B", "C", "2"), ("C", "D", "2")])
+expect_value("R10 - elige la ruta de 3 saltos y 7 km", (["A", "B", "C", "D"], "7"), lambda: route(demo, d, "A", "D"))
+
+section("BLOQUE 3 - Validación de origen y destino (R2, R3, R4, R5)")
+
+a_id, ghost = d["A"].id, UNKNOWN_UUID
+expect_error("R2 - origen con formato inválido", OriginNotFound, lambda: shortest_path(demo, NOT_A_UUID, a_id))
+expect_error("R2 - origen UUID válido no registrado", OriginNotFound, lambda: shortest_path(demo, ghost, a_id))
+expect_error("R3 - destino con formato inválido", DestinationNotFound, lambda: shortest_path(demo, a_id, NOT_A_UUID))
+expect_error("R3 - destino UUID válido no registrado", DestinationNotFound, lambda: shortest_path(demo, a_id, ghost))
+expect_error("R4 - red vacía: el origen no existe", OriginNotFound, lambda: shortest_path(Graph(), ghost, ghost))
+expect_error("R5 - ambos inexistentes: se informa el origen", OriginNotFound, lambda: shortest_path(demo, ghost, ghost))
+
+section("BLOQUE 4 - Origen igual al destino y ruta inexistente (R6, R7, R8)")
+
+expect_value("R6 - origen igual al destino: un punto y costo 0", (["A"], "0"), lambda: route(demo, d, "A", "A"))
+expect_value(
+    "R6 - sin conexiones recorridas",
+    [],
+    lambda: shortest_path(demo, a_id, a_id).to_dict()["connections"],
+)
+
+
+def no_route(graph, points, origin, destination):
+    r = shortest_path(graph, points[origin].id, points[destination].id).to_dict()
+    return r["found"], r["path"], r["total_cost_km"], "reason" in r
+
+
+expect_value("R7 - sentido contrario de una calle de un solo sentido", (False, [], None, True), lambda: no_route(demo, d, "D", "A"))
+iso, i = build("ABZ", [("A", "B", "1")])
+expect_value("R7 - destino aislado", (False, [], None, True), lambda: no_route(iso, i, "A", "Z"))
+expect_value("R8 - origen aislado", (False, [], None, True), lambda: no_route(iso, i, "Z", "A"))
+expect_value(
+    "R7 - el mensaje nombra origen y destino",
+    "No hay un camino dirigido desde 'Z' hasta 'A'.",
+    lambda: shortest_path(iso, i["Z"].id, i["A"].id).reason,
+)
+
+section("BLOQUE 5 - Ciclos y empates (R9, R12)")
+
+cyc, c = build("ABCD", [("A", "B", "1"), ("B", "A", "1"), ("B", "C", "1"), ("C", "B", "1"), ("C", "D", "1")])
+expect_value("R9 - ciclos A<->B<->C: termina y da 3 km", (["A", "B", "C", "D"], "3"), lambda: route(cyc, c, "A", "D"))
+tie, t = build("ABCD", [("A", "C", "1"), ("A", "B", "1"), ("B", "D", "1"), ("C", "D", "1")])
+expect_value("R12 - empate: costo 2 y ruta estable por nombre", (["A", "B", "D"], "2"), lambda: route(tie, t, "A", "D"))
+expect_value("R12 - el mismo empate da siempre la misma ruta", True, lambda: all(route(tie, t, "A", "D") == route(tie, t, "A", "D") for _ in range(5)))
+
 section("RESUMEN")
 passed = sum(results)
 print(f"{passed}/{len(results)} escenarios pasaron")
