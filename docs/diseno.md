@@ -35,6 +35,63 @@ Una ruta válida es una secuencia de puntos que comienza en el origen, termina e
 
 Por ejemplo, si existen `Bodega→A→Destino` con costo total de 9 km y `Bodega→B→C→Destino` con costo total de 7 km, se devuelve la segunda ruta aunque tenga un salto adicional. Si existe `B→C` pero no `C→B`, C es alcanzable desde B, pero B no es alcanzable desde C por esa conexión.
 
+### T06 · Caso de demostración
+
+#### La red
+
+Una red pequeña de **4 puntos y 4 conexiones dirigidas** con dos formas de llegar de la bodega a la casa:
+
+| Punto | Tipo |
+|---|---|
+| `Bodega` | `warehouse` |
+| `Barrio Norte` | `neighborhood` |
+| `Barrio Centro` | `neighborhood` |
+| `Casa A` | `pickup_point` |
+
+| Conexión (origen → destino) | Costo |
+|---|---|
+| `Bodega` → `Casa A` | 9 km |
+| `Bodega` → `Barrio Norte` | 3 km |
+| `Barrio Norte` → `Barrio Centro` | 2 km |
+| `Barrio Centro` → `Casa A` | 2 km |
+
+```
+            9 km (directa)
+  Bodega ─────────────────────────────▶ Casa A
+     │                                    ▲
+     │ 3 km                               │ 2 km
+     ▼                                    │
+  Barrio Norte ───────────────────▶ Barrio Centro
+                     2 km
+```
+
+#### Las dos alternativas
+
+| Ruta | Saltos | Costo total |
+|---|---|---|
+| `Bodega` → `Casa A` | **1** (menos saltos) | 9 km |
+| `Bodega` → `Barrio Norte` → `Barrio Centro` → `Casa A` | 3 | 3 + 2 + 2 = **7 km** (menor costo) |
+
+La ruta correcta es la de **7 km**, aunque tenga dos saltos más. Un recorrido por capas (BFS, F2) se quedaría con la directa porque llega en un solo salto: este caso es justo el que demuestra que la ruta de menor costo necesita Dijkstra (T04) y no el recorrido de F2.
+
+#### Por qué esta red
+
+- **Es la misma que ya usan las pruebas.** `api.md` (T18), `verify_shortest_path_api.py` (R10) y el script de aceptación (T24) construyen esta red con estos costos. Así la traza de T07, la API y la demo hablan del mismo ejemplo.
+- **Es pequeña a propósito.** Con 4 puntos la traza de T07 cabe en una tabla y se puede seguir en voz alta durante el pitch.
+- **Las calles tienen sentido.** Ninguna conexión tiene vuelta, así que también sirve para mostrar una ruta inexistente: de `Casa A` a `Bodega` no hay camino dirigido y la API responde `found: false` (R7).
+
+#### Consultas para la demo
+
+| Consulta | Resultado esperado |
+|---|---|
+| `Bodega` → `Casa A` | Ruta de 3 tramos por los dos barrios, **7 km** (no la directa de 9 km) |
+| `Bodega` → `Bodega` | Ruta de un solo punto, 0 km (R6) |
+| `Casa A` → `Bodega` | No hay ruta: `found: false` con la razón "No hay un camino dirigido desde 'Casa A' hasta 'Bodega'." (R7) |
+
+#### Cómo armarla en la interfaz
+
+La semilla (`SEED_NETWORK=1`) no trae este caso: en el mapa de F1 las rutas más baratas no tienen más saltos que las otras. Para la demo, con el backend arrancado sin semilla, se crean los 4 puntos en **Crear punto** y las 4 conexiones en **Crear conexión**, con los costos de la tabla. Toma menos de un minuto y no cambia la semilla, así que las trazas de F1 y F2 siguen valiendo.
+
 ### T08 · Casos borde de la ruta de menor costo
 
 Consulta: `GET /shortest-path?origin=<id>&destination=<id>`. Los puntos se validan en orden: primero el origen y después el destino (igual que en F2). Que no exista ruta es una respuesta de negocio (200), no un error.
