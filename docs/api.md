@@ -441,3 +441,36 @@ Se informa **el primer error** de esta lista:
 | Dos rutas con el mismo costo | 200 con la primera que fija el algoritmo (vecinos por nombre); el costo es el mismo |
 
 Cada fila corresponde a un caso de `diseno.md` (T08): R1 a R12.
+
+### Ejecución con la red de demostración (T18)
+
+Red de prueba con cuatro puntos y dos formas de llegar de `Bodega` a `Casa A`:
+
+| Ruta | Saltos | Costo |
+|---|---|---|
+| `Bodega` → `Casa A` (conexión directa) | 1 | 9 km |
+| `Bodega` → `Norte` → `Centro` → `Casa A` | 3 | 3 + 2 + 2 = **7 km** |
+
+Con `GET /shortest-path?origin=<Bodega>&destination=<Casa A>`, la API responde 200 con la ruta de **3 saltos y 7 km**, aunque la directa tenga menos saltos. Respuesta real, con los UUID abreviados (Flask ordena las claves del JSON alfabéticamente):
+
+```json
+{
+  "connections": [
+    { "cost_km": "3", "destination_id": "d61a2230-...", "origin_id": "5947b65d-..." },
+    { "cost_km": "2", "destination_id": "dcc0641b-...", "origin_id": "d61a2230-..." },
+    { "cost_km": "2", "destination_id": "917fb61c-...", "origin_id": "dcc0641b-..." }
+  ],
+  "destination_id": "917fb61c-...",
+  "found": true,
+  "origin_id": "5947b65d-...",
+  "path": [
+    { "id": "5947b65d-...", "name": "Bodega", "type": "warehouse" },
+    { "id": "d61a2230-...", "name": "Norte", "type": "neighborhood" },
+    { "id": "dcc0641b-...", "name": "Centro", "type": "neighborhood" },
+    { "id": "917fb61c-...", "name": "Casa A", "type": "pickup_point" }
+  ],
+  "total_cost_km": "7"
+}
+```
+
+Esta ejecución se repite en `backend/verify_shortest_path_api.py` (caso R10), junto con el resto de los casos R1 a R12 contra la API.
