@@ -199,6 +199,80 @@ expect_value(
     lambda: route("Bodega", "Casa A"),
 )
 
+# --- T18: demonstration network, cost against hops (R10 to R12) -------------
+
+section("BLOQUE 3 - Red de demostración: menor costo frente a menos saltos (R10 a R12)")
+
+
+def direct_connection_cost():
+    """Costo de la conexión directa Bodega -> Casa A, leída de GET /connections."""
+    for connection in client.get("/connections").get_json()["connections"]:
+        if connection["origin_id"] == ids["Bodega"] and connection["destination_id"] == ids["Casa A"]:
+            return connection["cost_km"]
+    return None
+
+
+def cheapest_summary():
+    status, body = call(ids["Bodega"], ids["Casa A"])
+    hops = len(body["connections"])
+    summed = sum(Decimal(c["cost_km"]) for c in body["connections"])
+    return status, hops, str(summed) == body["total_cost_km"], isinstance(body["total_cost_km"], str)
+
+
+expect_value(
+    "R10 - existe la ruta directa de 1 salto y cuesta 9",
+    "9",
+    direct_connection_cost,
+)
+expect_value(
+    "R10 - elige la ruta de 3 saltos y 7 km, no la directa de 9 km",
+    (200, True, ["Bodega", "Norte", "Centro", "Casa A"], "7"),
+    lambda: route("Bodega", "Casa A")[:4],
+)
+expect_value(
+    "R10 - los tramos suman el costo total, que viaja como texto",
+    (200, 3, True, True),
+    cheapest_summary,
+)
+
+
+def chained_connections():
+    _, body = call(ids["Bodega"], ids["Casa A"])
+    path_ids = [point["id"] for point in body["path"]]
+    pairs = [(c["origin_id"], c["destination_id"]) for c in body["connections"]]
+    return pairs == list(zip(path_ids, path_ids[1:]))
+
+
+expect_value("R10 - cada tramo une dos puntos consecutivos de la ruta", True, chained_connections)
+
+
+def with_network(names, edges, origin, destination):
+    """Consulta sobre otra red de prueba y vuelve a la red principal."""
+    other, other_ids = make_network(names, edges)
+    use(other)
+    try:
+        status, body = call(other_ids[origin], other_ids[destination])
+        return status, [point["name"] for point in body["path"]], body["total_cost_km"]
+    finally:
+        use(graph)
+
+
+expect_value(
+    "R11 - decimales exactos: 0.1 + 0.2 es 0.3",
+    (200, ["A", "B", "C"], "0.3"),
+    lambda: with_network("ABC", [("A", "B", "0.1"), ("B", "C", "0.2")], "A", "C"),
+)
+expect_value(
+    "R12 - empate de costo: gana la primera ruta por nombre",
+    (200, ["A", "B", "D"], "2"),
+    lambda: with_network(
+        "ABCD",
+        [("A", "B", "1"), ("B", "D", "1"), ("A", "C", "1"), ("C", "D", "1")],
+        "A",
+        "D",
+    ),
+)
+
 section("RESUMEN")
 passed = sum(results)
 print(f"{passed}/{len(results)} escenarios pasaron")
