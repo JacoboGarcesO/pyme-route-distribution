@@ -25,7 +25,7 @@
 </script>
 
 <section>
-  <h2>Ruta de menor costo</h2>
+  <h2>Ruta entre dos puntos</h2>
   <div class="layout">
     <div class="query">
       <RouteSelectors {points} {loading} onSearch={search} />
