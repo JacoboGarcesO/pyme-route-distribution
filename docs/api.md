@@ -313,3 +313,91 @@ Todos siguen el formato de F1: `{"error": {"code", "message"}}`.
 | `GET /coverage?origin=<bodega>` | 200 con la lista de alcanzables |
 | `GET /coverage?origin=<bodega>&destination=<D aislado>` | 200 con `reachable: false` |
 | `GET /coverage?origin=<bodega>&destination=<inexistente>` | 404 `DESTINATION_NOT_FOUND` |
+
+---
+
+# Feature 3 — Ruta de menor costo
+
+Calcula la ruta de menor costo entre dos puntos siguiendo el sentido de cada conexión (decisiones en `diseno.md`, T04, T05 y T08). A diferencia de `/coverage`, aquí los costos sí cuentan: se elige el menor **costo total en km**, no la menor cantidad de saltos.
+
+## GET `/shortest-path`
+
+Parámetros de consulta:
+
+| Parámetro | Obligatorio | Descripción |
+|---|---|---|
+| `origin` | Sí | UUID del punto de origen |
+| `destination` | Sí | UUID del punto de destino |
+
+Que **no exista ruta no es un error**: es una respuesta válida de negocio (200 con `found: false`). Los errores son solo los de entrada: falta un parámetro o un punto no existe.
+
+### Con ruta: `found: true`
+
+Entrada: `GET /shortest-path?origin=3f2b8c1e-...&destination=c7e1f0b3-...`
+
+Respuesta 200:
+
+```json
+{
+  "origin_id": "3f2b8c1e-...",
+  "destination_id": "c7e1f0b3-...",
+  "found": true,
+  "path": [
+    { "id": "3f2b8c1e-...", "name": "Bodega", "type": "warehouse" },
+    { "id": "a91c04d2-...", "name": "Barrio Norte", "type": "neighborhood" },
+    { "id": "b5d7e3a0-...", "name": "Barrio Centro", "type": "neighborhood" },
+    { "id": "c7e1f0b3-...", "name": "Casa A", "type": "pickup_point" }
+  ],
+  "connections": [
+    { "origin_id": "3f2b8c1e-...", "destination_id": "a91c04d2-...", "cost_km": "3" },
+    { "origin_id": "a91c04d2-...", "destination_id": "b5d7e3a0-...", "cost_km": "2" },
+    { "origin_id": "b5d7e3a0-...", "destination_id": "c7e1f0b3-...", "cost_km": "2" }
+  ],
+  "total_cost_km": "7"
+}
+```
+
+| Campo | Descripción |
+|---|---|
+| `path` | Los puntos de la ruta en orden origen→destino, el origen primero y el destino al final |
+| `connections` | Los tramos recorridos, en el mismo orden, cada uno con su `cost_km`. Hay uno menos que puntos en `path` |
+| `total_cost_km` | Suma exacta de los tramos, como texto decimal (por ejemplo `"0.3"` y nunca `0.30000000000000004`) |
+
+El costo viaja como **texto**, igual que en F1, porque el sistema lo calcula con `Decimal` y un número JSON perdería exactitud.
+
+### Origen igual al destino
+
+Es una consulta válida (T05): la ruta tiene un solo punto, no recorre conexiones y cuesta 0 km.
+
+Respuesta 200:
+
+```json
+{
+  "origin_id": "3f2b8c1e-...",
+  "destination_id": "3f2b8c1e-...",
+  "found": true,
+  "path": [ { "id": "3f2b8c1e-...", "name": "Bodega", "type": "warehouse" } ],
+  "connections": [],
+  "total_cost_km": "0"
+}
+```
+
+### Sin ruta: `found: false`
+
+No existe ningún camino dirigido de origen a destino. Incluye un destino aislado y el sentido contrario de una calle de un solo sentido.
+
+Respuesta 200:
+
+```json
+{
+  "origin_id": "3f2b8c1e-...",
+  "destination_id": "d4a2e9f1-...",
+  "found": false,
+  "path": [],
+  "connections": [],
+  "total_cost_km": null,
+  "reason": "No hay un camino dirigido desde 'Bodega' hasta 'Casa D'."
+}
+```
+
+El campo `reason` solo aparece cuando `found` es `false`, y siempre con `path: []` y `total_cost_km: null`.
