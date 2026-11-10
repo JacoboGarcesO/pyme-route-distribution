@@ -12,6 +12,7 @@
     DUPLICATE_CONNECTION: 'Esa conexión ya está registrada en ese sentido.',
     ORIGIN_NOT_FOUND: 'Actualiza la lista de puntos y vuelve a elegir el origen.',
     DESTINATION_NOT_FOUND: 'Actualiza la lista de puntos y vuelve a elegir el destino.',
+    MISSING_DATA: 'Completa los datos obligatorios y vuelve a intentarlo.',
     NETWORK_ERROR: 'Inicia el backend y vuelve a intentarlo.',
   }
 </script>
