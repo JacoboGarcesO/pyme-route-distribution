@@ -50,7 +50,7 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 - **Entregable:** actualización de `docs/equipo.md` con responsable del pitch y tareas asignadas.
 - **Hecho cuando:** el reparto cumple las reglas de participación del curso.
 
-### [ ] T03 · Cargar el backlog en GitHub (40 min) · **Carolina**
+### [x] T03 · Cargar el backlog en GitHub (40 min) · **Carolina**
 - **Entregable:** una Issue por tarea, con bloque y responsable.
 - **Hecho cuando:** todas aparecen en el tablero.
 
