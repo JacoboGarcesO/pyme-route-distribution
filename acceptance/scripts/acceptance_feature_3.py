@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import sys
 from dataclasses import dataclass
+from decimal import Decimal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -122,6 +123,89 @@ def main() -> int:
             lambda r: r.status == 200
             and isinstance(r.body, dict)
             and r.body.get("status") == "ok",
+        )
+    )
+
+    # Demonstration network: Bodega -> Casa A directly costs 9 km (1 hop), while
+    # Bodega -> Barrio Norte -> Barrio Centro -> Casa A costs 7 km (3 hops).
+    warehouse = create_point("Bodega de aceptación", "warehouse")
+    north = create_point("Barrio Norte", "neighborhood")
+    center = create_point("Barrio Centro", "neighborhood")
+    house = create_point("Casa A", "pickup_point")
+    point_responses = (warehouse, north, center, house)
+    results.append(
+        run_scenario(
+            "T24 - preparar la red de demostración: puntos",
+            "HTTP 201 para la bodega, los dos barrios y la casa",
+            lambda: point_responses,
+            lambda rs: all(r.status == 201 and isinstance(r.body, dict) and r.body.get("id") for r in rs),
+        )
+    )
+
+    if not all(
+        r.status == 201 and isinstance(r.body, dict) and r.body.get("id")
+        for r in point_responses
+    ):
+        print("\nNo se pueden ejecutar los escenarios restantes: la API no creó los puntos base.")
+        print("Inicia el backend y vuelve a ejecutar el script.")
+        return 1
+
+    warehouse_id = warehouse.body["id"]
+    north_id = north.body["id"]
+    center_id = center.body["id"]
+    house_id = house.body["id"]
+    connection_responses = (
+        create_connection(warehouse_id, house_id, "9"),
+        create_connection(warehouse_id, north_id, "3"),
+        create_connection(north_id, center_id, "2"),
+        create_connection(center_id, house_id, "2"),
+    )
+    results.append(
+        run_scenario(
+            "T24 - preparar la red de demostración: conexiones",
+            "HTTP 201 para la ruta directa de 9 km y para los tres tramos de 3, 2 y 2 km",
+            lambda: connection_responses,
+            lambda rs: all(r.status == 201 for r in rs),
+        )
+    )
+
+    results.append(
+        run_scenario(
+            "T24 - existe la ruta directa de 1 salto y 9 km",
+            "HTTP 200 y la conexión bodega -> casa de 9 km en la lista",
+            lambda: request("GET", "/connections"),
+            lambda r: r.status == 200
+            and any(
+                c.get("origin_id") == warehouse_id
+                and c.get("destination_id") == house_id
+                and c.get("cost_km") == "9"
+                for c in r.body.get("connections", [])
+            ),
+        )
+    )
+
+    expected_names = ["Bodega de aceptación", "Barrio Norte", "Barrio Centro", "Casa A"]
+    route = shortest_path(warehouse_id, house_id)
+    results.append(
+        run_scenario(
+            "T24 - ruta normal de menor costo",
+            "HTTP 200, found true, ruta bodega -> norte -> centro -> casa y costo total 7",
+            lambda: route,
+            lambda r: r.status == 200
+            and isinstance(r.body, dict)
+            and r.body.get("found") is True
+            and route_names(r) == expected_names
+            and r.body.get("total_cost_km") == "7",
+        )
+    )
+    results.append(
+        run_scenario(
+            "T24 - menos saltos no es menor costo",
+            "La ruta elegida tiene 3 tramos y cuesta menos que la directa de 1 tramo y 9 km",
+            lambda: route,
+            lambda r: isinstance(r.body, dict)
+            and len(r.body.get("connections", [])) == 3
+            and Decimal(r.body.get("total_cost_km", "0")) < Decimal("9"),
         )
     )
 
