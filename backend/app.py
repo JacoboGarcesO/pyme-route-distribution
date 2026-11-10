@@ -7,6 +7,7 @@ from api.coverage import coverage_bp
 from api.errors import register_error_handlers
 from api.network import network_bp
 from api.points import points_bp
+from api.shortest_path import shortest_path_bp
 from domain.graph import Graph
 from seed import seed_network
 
@@ -20,6 +21,7 @@ app.register_blueprint(points_bp)
 app.register_blueprint(connections_bp)
 app.register_blueprint(network_bp)
 app.register_blueprint(coverage_bp)
+app.register_blueprint(shortest_path_bp)
 
 
 @app.route("/health")
