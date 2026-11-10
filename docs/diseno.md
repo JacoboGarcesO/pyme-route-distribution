@@ -92,6 +92,60 @@ La ruta correcta es la de **7 km**, aunque tenga dos saltos más. Un recorrido p
 
 La semilla (`SEED_NETWORK=1`) no trae este caso: en el mapa de F1 las rutas más baratas no tienen más saltos que las otras. Para la demo, con el backend arrancado sin semilla, se crean los 4 puntos en **Crear punto** y las 4 conexiones en **Crear conexión**, con los costos de la tabla. Toma menos de un minuto y no cambia la semilla, así que las trazas de F1 y F2 siguen valiendo.
 
+### T07 · Traza manual de Dijkstra
+
+#### Qué se traza
+
+La consulta `Bodega` → `Casa A` sobre la red de T06, siguiendo las reglas de T04 y T05 y el orden de `backend/domain/shortest_path.py`:
+
+- Se saca de la cola el punto pendiente con **menor costo tentativo**; al sacarlo, su costo queda **fijo**.
+- Se revisan sus conexiones salientes en **orden de nombre** y se suma el costo de cada tramo.
+- Un vecino se actualiza solo si el costo nuevo es **estrictamente menor** que el que tenía; al actualizarlo se guarda su **predecesor**.
+- La búsqueda **para cuando se fija el destino**.
+
+Notación: `∞` significa "todavía sin camino conocido" y `—` "sin predecesor".
+
+#### Traza
+
+| Paso | Se fija (sale de la cola) | Conexiones revisadas | Actualizaciones | Bodega | Barrio Norte | Barrio Centro | Casa A | Cola después (costo, punto) |
+|---|---|---|---|---|---|---|---|---|
+| 0 | — (inicio) | — | `Bodega` = 0 | **0** / — | ∞ / — | ∞ / — | ∞ / — | (0, Bodega) |
+| 1 | `Bodega` con 0 | → Barrio Norte: 0 + 3 = 3<br>→ Casa A: 0 + 9 = 9 | Barrio Norte: ∞ → **3** (pred. Bodega)<br>Casa A: ∞ → **9** (pred. Bodega) | **0** / — | 3 / Bodega | ∞ / — | 9 / Bodega | (3, Barrio Norte), (9, Casa A) |
+| 2 | `Barrio Norte` con 3 | → Barrio Centro: 3 + 2 = 5 | Barrio Centro: ∞ → **5** (pred. Barrio Norte) | **0** / — | **3** / Bodega | 5 / Barrio Norte | 9 / Bodega | (5, Barrio Centro), (9, Casa A) |
+| 3 | `Barrio Centro` con 5 | → Casa A: 5 + 2 = 7 | Casa A: 9 → **7** (pred. Barrio Centro), porque 7 < 9 | **0** / — | **3** / Bodega | **5** / Barrio Norte | 7 / Barrio Centro | (7, Casa A), (9, Casa A) |
+| 4 | `Casa A` con 7 | — (es el destino: se para) | — | **0** / — | **3** / Bodega | **5** / Barrio Norte | **7** / Barrio Centro | (9, Casa A): entrada vieja, no se usa |
+
+Cada celda de punto muestra `costo tentativo / predecesor`; en negrita, los costos ya fijos.
+
+#### Reconstrucción de la ruta
+
+Se parte del destino y se siguen los predecesores hacia atrás hasta el origen:
+
+`Casa A` ← `Barrio Centro` ← `Barrio Norte` ← `Bodega`
+
+Al invertirla queda en orden origen→destino: **`Bodega` → `Barrio Norte` → `Barrio Centro` → `Casa A`**.
+
+#### Comprobación del costo
+
+| Tramo | Costo |
+|---|---|
+| `Bodega` → `Barrio Norte` | 3 km |
+| `Barrio Norte` → `Barrio Centro` | 2 km |
+| `Barrio Centro` → `Casa A` | 2 km |
+| **Total** | **7 km** |
+
+El total coincide con el costo fijado para `Casa A` en el paso 4.
+
+#### Lo que muestra la traza
+
+- **El costo manda, no los saltos.** En el paso 1 `Casa A` ya tiene un camino de un salto (9 km), pero no se fija porque `Barrio Norte` (3 km) está más barato en la cola. En el paso 3 aparece un camino de 7 km y reemplaza al de 9: es la actualización que BFS nunca haría.
+- **Un costo fijo no vuelve a cambiar.** Como todos los costos son positivos (T07 de F1), cuando un punto sale de la cola ningún camino posterior puede ser más barato. Por eso la búsqueda puede parar en el paso 4 sin revisar la entrada vieja `(9, Casa A)`.
+- **Los predecesores guardan la ruta.** Basta un predecesor por punto, el del mejor costo conocido, para reconstruir la secuencia completa.
+
+#### Verificación
+
+La traza se comparó con `dijkstra()` de `backend/domain/shortest_path.py` sobre la misma red. Los costos finales (`Bodega` 0, `Barrio Norte` 3, `Barrio Centro` 5, `Casa A` 7) y los predecesores (`Barrio Norte` ← `Bodega`, `Barrio Centro` ← `Barrio Norte`, `Casa A` ← `Barrio Centro`) son idénticos, y `shortest_path()` devuelve la misma ruta con `total_cost` 7.
+
 ### T08 · Casos borde de la ruta de menor costo
 
 Consulta: `GET /shortest-path?origin=<id>&destination=<id>`. Los puntos se validan en orden: primero el origen y después el destino (igual que en F2). Que no exista ruta es una respuesta de negocio (200), no un error.
