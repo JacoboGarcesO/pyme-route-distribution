@@ -65,11 +65,11 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 - **Entregable:** reglas para origen igual a destino, ruta inexistente, costo total, desempates y orden de la secuencia.
 - **Hecho cuando:** cada caso tiene un resultado esperado.
 
-### [ ] T06 · Diseñar el caso de demostración (45 min) · **Carolina**
+### [x] T06 · Diseñar el caso de demostración (45 min) · **Carolina**
 - **Entregable:** red pequeña con al menos dos alternativas entre origen y destino: una con menos saltos pero mayor costo y otra con más saltos pero menor costo.
 - **Hecho cuando:** la elección del algoritmo puede demostrarse con una traza manual.
 
-### [ ] T07 · Traza manual del algoritmo (60 min) · **Carolina**
+### [x] T07 · Traza manual del algoritmo (60 min) · **Carolina**
 - **Entregable:** tabla en `docs/diseno.md` con costos tentativos, nodo seleccionado, actualizaciones y predecesores.
 - **Hecho cuando:** se reconstruye la ruta final y se comprueba su costo acumulado.
 
@@ -132,11 +132,11 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 - **Entregable:** controles alimentados por los puntos reales del backend.
 - **Hecho cuando:** no dependen de identificadores escritos manualmente.
 
-### [ ] T21 · Mostrar ruta y costo total (60 min) · **Carolina**
+### [x] T21 · Mostrar ruta y costo total (60 min) · **Carolina**
 - **Entregable:** vista de la secuencia, costo total y conexiones recorridas.
 - **Hecho cuando:** el usuario puede entender por qué se eligió esa ruta.
 
-### [ ] T22 · Mostrar errores y ruta inexistente (45 min) · **Carolina**
+### [x] T22 · Mostrar errores y ruta inexistente (45 min) · **Carolina**
 - **Entregable:** mensajes comprensibles para puntos inválidos, falta de conexión y datos incompletos.
 - **Hecho cuando:** cada respuesta de la API tiene una representación clara en la interfaz.
 
