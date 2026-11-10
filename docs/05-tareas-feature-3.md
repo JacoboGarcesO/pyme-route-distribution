@@ -105,20 +105,20 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 
 ## Bloque 3 — API REST
 
-### [ ] T15 · Diseñar el contrato de `GET /shortest-path` (45 min) · **Mariana**
+### [x] T15 · Diseñar el contrato de `GET /shortest-path` (45 min) · **Mariana**
 - **Entregable:** sección en `docs/api.md` con parámetros, respuestas y errores.
 - **Propuesta:** `GET /shortest-path?origin=<id>&destination=<id>`.
 - **Hecho cuando:** incluye ejemplos JSON y códigos HTTP para cada caso de T08.
 
-### [ ] T16 · Implementar el endpoint de ruta (60 min) · **Mariana**
+### [x] T16 · Implementar el endpoint de ruta (60 min) · **Mariana**
 - **Entregable:** endpoint conectado al grafo real de la aplicación.
 - **Hecho cuando:** una consulta normal devuelve secuencia y costo mínimo.
 
-### [ ] T17 · Traducir errores y respuestas de negocio (45 min) · **Mariana**
+### [x] T17 · Traducir errores y respuestas de negocio (45 min) · **Mariana**
 - **Entregable:** errores uniformes para parámetros faltantes, origen/destino inexistentes y ruta inexistente.
 - **Hecho cuando:** los códigos y mensajes coinciden con `docs/api.md`.
 
-### [ ] T18 · Probar el endpoint con la red de demostración (45 min) · **Mariana**
+### [x] T18 · Probar el endpoint con la red de demostración (45 min) · **Mariana**
 - **Entregable:** ejecución documentada con las dos rutas alternativas.
 - **Hecho cuando:** la API selecciona la de menor costo aunque tenga más saltos.
 
@@ -128,7 +128,7 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 - **Entregable:** decisión en `docs/diseno.md` sobre sección o pantalla, reutilizando componentes y cliente existentes.
 - **Hecho cuando:** queda claro cómo se integra con la cobertura de F2.
 
-### [ ] T20 · Crear selectores de origen y destino (45 min) · **Mariana**
+### [x] T20 · Crear selectores de origen y destino (45 min) · **Mariana**
 - **Entregable:** controles alimentados por los puntos reales del backend.
 - **Hecho cuando:** no dependen de identificadores escritos manualmente.
 
@@ -142,10 +142,10 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 
 ## Bloque 5 — Script de aceptación
 
-### [ ] T23 · Preparar el esqueleto del script (45 min) · **Mariana**
+### [x] T23 · Preparar el esqueleto del script (45 min) · **Mariana**
 - **Entregable:** script en `acceptance/` con reporte común de escenario, esperado, obtenido y resultado.
 
-### [ ] T24 · Probar escenario normal (45 min) · **Mariana**
+### [x] T24 · Probar escenario normal (45 min) · **Mariana**
 - **Escenario:** dos rutas posibles con distinto número de saltos y costo.
 - **Hecho cuando:** comprueba la secuencia y el costo mínimo.
 
