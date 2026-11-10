@@ -149,30 +149,32 @@ La verificación de Jose es una revisión cruzada obligatoria: debe comprobar qu
 - **Escenario:** dos rutas posibles con distinto número de saltos y costo.
 - **Hecho cuando:** comprueba la secuencia y el costo mínimo.
 
-### [ ] T25 · Probar escenarios de ausencia de ruta y red vacía (45 min) · **Jose**
+### [x] T25 · Probar escenarios de ausencia de ruta y red vacía (45 min) · **Jose**
 - **Hecho cuando:** distingue una ruta inexistente de una respuesta exitosa.
 
-### [ ] T26 · Probar errores de entrada (60 min) · **Jose**
+### [x] T26 · Probar errores de entrada (60 min) · **Jose**
 - **Escenarios:** origen inexistente, destino inexistente, parámetros faltantes y destino igual al origen, según la decisión de T05.
 - **Hecho cuando:** comprueba códigos y mensajes esperados.
 
-### [ ] T27 · Ejecutar y guardar evidencia (30 min) · **Jose**
+### [x] T27 · Ejecutar y guardar evidencia (30 min) · **Jose**
 - **Entregable:** salida completa en `docs/evidencia-f3.txt`.
 - **Hecho cuando:** corre desde un estado limpio sin intervención manual.
 
 ## Bloque 6 — Cierre
 
-### [ ] T28 · Actualizar README (45 min) · **Jose**
+### [x] T28 · Actualizar README (45 min) · **Jose**
 - **Entregable:** propósito de F3, endpoint, ejecución, ejemplo y decisiones del diseño.
 
-### [ ] T29 · Actualizar bitácora de IA (45 min) · **Jose**
+### [x] T29 · Actualizar bitácora de IA (45 min) · **Jose**
 - **Entregable:** una fila por decisión o pieza desarrollada con apoyo de IA, incluyendo verificación propia.
 
-### [ ] T30 · Preparar video de respaldo (60 min) · **Jose**
+### [~] T30 · Preparar video de respaldo (60 min) · **Jose**
 - **Entregable:** video de máximo 3 minutos con ruta normal, menor costo frente a menos saltos y ruta inexistente.
+- **Preparación:** el guion está en `docs/video-f3.md`; falta grabar y enlazar el video real.
 
-### [ ] T31 · Preparar el pitch (60 min) · **Jose**
+### [x] T31 · Preparar el pitch (60 min) · **Jose**
 - **Entregable:** guion con problema, grafo, algoritmo, complejidad, reconstrucción de ruta, caso borde, pruebas y aportes.
+- **Preparación:** el guion está en `docs/pitch-f3.md`.
 
 ### [ ] T32 · Pull request, revisión y tag (45 min) · **Jose**
 - **Entregable:** PR revisado y mezclado, con tag `f3` y aportes enlazados.

@@ -1,0 +1,40 @@
+Evidencia de aceptación — Feature 3
+Fecha: 2026-11-10
+
+Comandos ejecutados:
+
+    python3 backend/verify_shortest_path.py
+    python3 backend/verify_shortest_path_api.py
+    python3 acceptance/scripts/acceptance_feature_3.py
+    python3 -m py_compile acceptance/scripts/acceptance_feature_3.py backend/verify_shortest_path_api.py
+
+Resultados:
+
+- Verificación del núcleo de ruta: 23/23 escenarios PASARON.
+- Verificación de la API GET /shortest-path: 30/30 escenarios PASARON.
+- Script de aceptación contra el backend real: 6/6 escenarios PASARON.
+- Compilación sintáctica de los scripts: PASÓ.
+
+Escenarios cubiertos:
+
+1. La API responde correctamente en /health.
+2. Se crea la red de demostración con cuatro puntos.
+3. Se crean la ruta directa de 9 km y la ruta alternativa de 3 + 2 + 2 km.
+4. La ruta directa de un salto existe.
+5. Dijkstra selecciona la ruta de tres saltos y 7 km.
+6. Se comprueba que menos saltos no significa menor costo.
+
+Casos adicionales cubiertos por las verificaciones detalladas:
+
+- Red vacía.
+- Origen o destino inexistente.
+- Parámetros faltantes, vacíos o inválidos.
+- Origen igual al destino.
+- Destino aislado y origen sin salidas.
+- Sentido contrario de una conexión dirigida.
+- Ciclos.
+- Costos Decimal, suma exacta y empates estables.
+
+Nota de entorno:
+
+El build del frontend no se ejecutó porque Vite no está instalado en el entorno local (`vite: command not found`). Debe ejecutarse desde `frontend/` después de instalar las dependencias con `npm install`.

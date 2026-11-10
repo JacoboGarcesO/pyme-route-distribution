@@ -13,7 +13,7 @@ un frontend conectado al backend.
 
 ## Estado
 
-Feature 1 — Red operativa inicial.
+Feature 3 — Ruta de menor costo, sobre las features anteriores integradas.
 
 La API registra puntos (`warehouse`, `neighborhood` y `pickup_point`) y
 conexiones dirigidas con distancia positiva en kilómetros. Las decisiones de
@@ -99,6 +99,42 @@ resultado.
 
 El detalle y las alternativas descartadas están en [`docs/diseno.md`](docs/diseno.md).
 
+## Feature 3 — Ruta de menor costo
+
+Feature 3 calcula una ruta dirigida de costo mínimo entre dos puntos usando
+Dijkstra y costos positivos representados con `Decimal`. La ruta devuelta
+incluye la secuencia de puntos, las conexiones recorridas y el costo total en
+kilómetros. Una ruta inexistente es una respuesta válida con `found: false`;
+los puntos inexistentes o parámetros faltantes devuelven un error HTTP.
+
+### Endpoint
+
+```text
+GET /shortest-path?origin=<id>&destination=<id>
+```
+
+La documentación completa, ejemplos y códigos de error están en
+[`docs/api.md`](docs/api.md). Las decisiones sobre Dijkstra, rutas válidas,
+costos y desempates están en [`docs/diseno.md`](docs/diseno.md).
+
+### Pruebas de Feature 3
+
+Con el backend ejecutándose en `http://127.0.0.1:5000`:
+
+```bash
+python3 acceptance/scripts/acceptance_feature_3.py
+```
+
+Para ejecutar las verificaciones detalladas desde la raíz:
+
+```bash
+python3 backend/verify_shortest_path.py
+python3 backend/verify_shortest_path_api.py
+```
+
+La evidencia de ejecución está en
+[`docs/evidencia-f3.txt`](docs/evidencia-f3.txt).
+
 ## Evidencia
 
 La salida del script de aceptación (23 de 23 escenarios) está en
@@ -148,6 +184,7 @@ Las decisiones de algoritmo, alcance y casos borde están documentadas en
 - [Decisiones de diseño](docs/diseno.md)
 - [Contrato de API](docs/api.md)
 - [Plan de tareas de Feature 1](docs/05-tareas-feature-1.md)
+- [Plan de tareas de Feature 3](docs/05-tareas-feature-3.md)
 - [Equipo y forma de trabajo](docs/equipo.md)
 - [Bitácora de IA](docs/bitacora-ia.md)
 - [Guion del pitch](docs/pitch-f1.md)
