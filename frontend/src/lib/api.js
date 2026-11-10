@@ -80,3 +80,10 @@ export function getCoverage(originId, destinationId) {
   if (destinationId) params.set('destination', destinationId)
   return request(`/coverage?${params}`)
 }
+
+// Ruta de menor costo. Que no exista ruta llega como respuesta válida
+// (found: false con reason), no como error; los errores son solo de entrada.
+export function getShortestPath(originId, destinationId) {
+  const params = new URLSearchParams({ origin: originId, destination: destinationId })
+  return request(`/shortest-path?${params}`)
+}
