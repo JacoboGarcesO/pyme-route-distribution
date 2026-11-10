@@ -401,3 +401,43 @@ Respuesta 200:
 ```
 
 El campo `reason` solo aparece cuando `found` es `false`, y siempre con `path: []` y `total_cost_km: null`.
+
+### Errores
+
+Todos siguen el formato de F1: `{"error": {"code", "message"}}`.
+
+| Situación | HTTP | `code` |
+|---|---|---|
+| Falta `origin` o `destination` (ausente, vacío o solo espacios) | 400 | `MISSING_DATA` |
+| `origin` no existe, es UUID inválido, o la red está vacía | 404 | `ORIGIN_NOT_FOUND` |
+| `destination` no existe o es UUID inválido | 404 | `DESTINATION_NOT_FOUND` |
+
+Los errores usan los códigos de F1; no se crea ninguno nuevo.
+
+### Orden de validación
+
+Se informa **el primer error** de esta lista:
+
+1. Falta un parámetro: se revisa primero `origin` y después `destination`, así que si faltan los dos se informa `origin`.
+2. El origen existe.
+3. El destino existe. Si el origen y el destino no existen a la vez, se informa el origen.
+4. Se calcula la ruta.
+
+### Ejemplos de uso
+
+| Petición | Resultado |
+|---|---|
+| `GET /shortest-path` o falta uno de los dos parámetros | 400 `MISSING_DATA` |
+| `GET /shortest-path?origin=<inexistente>&destination=<bodega>` | 404 `ORIGIN_NOT_FOUND` |
+| `GET /shortest-path?origin=<bodega>&destination=<inexistente>` | 404 `DESTINATION_NOT_FOUND` |
+| Cualquier consulta con la red vacía | 404 `ORIGIN_NOT_FOUND` |
+| Origen y destino inexistentes a la vez | 404 `ORIGIN_NOT_FOUND` |
+| `?origin=<bodega>&destination=<bodega>` | 200 `found: true`, un solo punto y costo `"0"` |
+| `?origin=<bodega>&destination=<casa aislada>` | 200 `found: false` con `reason` |
+| `?origin=<casa sin salidas>&destination=<bodega>` | 200 `found: false` con `reason` |
+| Red con ciclos | 200, termina y devuelve la ruta |
+| Dos rutas, una con menos saltos y otra con menor costo | 200 con la de **menor costo**, aunque tenga más saltos |
+| Costos decimales (`0.1` y `0.2`) | 200 con `total_cost_km: "0.3"` |
+| Dos rutas con el mismo costo | 200 con la primera que fija el algoritmo (vecinos por nombre); el costo es el mismo |
+
+Cada fila corresponde a un caso de `diseno.md` (T08): R1 a R12.
