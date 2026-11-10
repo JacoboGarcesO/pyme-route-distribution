@@ -6,6 +6,7 @@
   import NetworkView from './lib/NetworkView.svelte'
   import PointForm from './lib/PointForm.svelte'
   import PointsList from './lib/PointsList.svelte'
+  import RouteView from './lib/RouteView.svelte'
 
   let points = $state([])
   let pointsLoading = $state(true)
@@ -158,9 +159,20 @@
         <CoverageView {points} />
       </div>
 
-      <div class="group">
+      <div class="group" id="ruta">
         <div class="group-head">
           <span class="group-index">03</span>
+          <div>
+            <h2>Ruta de menor costo</h2>
+            <p>Elige dos puntos y consulta el camino de menor distancia entre ellos.</p>
+          </div>
+        </div>
+        <RouteView {points} />
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <span class="group-index">04</span>
           <div>
             <h2>Estado de la red</h2>
             <p>Conexiones salientes de cada punto y listado completo de la red.</p>
