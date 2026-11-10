@@ -146,6 +146,59 @@ expect_value(
     lambda: sorted(call(UNKNOWN_UUID, ids["Bodega"])[1]["error"]),
 )
 
+# --- T17: business answers that are not errors (R6 to R9) ------------------
+
+section("BLOQUE 2 - Respuestas de negocio: 200 aunque no haya ruta (R6 a R9)")
+
+
+def route(origin, destination):
+    """(HTTP, found, nombres de la ruta, costo total, cantidad de tramos)."""
+    status, body = call(ids[origin], ids[destination])
+    names = [point["name"] for point in body["path"]]
+    return status, body["found"], names, body["total_cost_km"], len(body["connections"])
+
+
+expect_value(
+    "R6 - origen igual al destino: un solo punto, costo 0 y sin tramos",
+    (200, True, ["Bodega"], "0", 0),
+    lambda: route("Bodega", "Bodega"),
+)
+expect_value(
+    "R7 - destino aislado: no hay ruta",
+    (200, False, [], None, 0),
+    lambda: route("Bodega", "Casa D"),
+)
+expect_value(
+    "R7 - sentido contrario de un solo sentido: no hay ruta",
+    (200, False, [], None, 0),
+    lambda: route("Casa A", "Bodega"),
+)
+expect_value(
+    "R7 - la razón nombra el origen y el destino",
+    "No hay un camino dirigido desde 'Casa A' hasta 'Bodega'.",
+    lambda: call(ids["Casa A"], ids["Bodega"])[1]["reason"],
+)
+expect_value(
+    "R7 - con ruta no aparece el campo reason",
+    False,
+    lambda: "reason" in call(ids["Bodega"], ids["Casa A"])[1],
+)
+expect_value(
+    "R8 - origen aislado con otro destino: no hay ruta",
+    (200, False, [], None, 0),
+    lambda: route("Casa D", "Bodega"),
+)
+expect_value(
+    "R8 - origen sin salidas (Casa A) con otro destino: no hay ruta",
+    (200, False, [], None, 0),
+    lambda: route("Casa A", "Norte"),
+)
+expect_value(
+    "R9 - ciclo entre Norte y Centro: termina y devuelve la ruta",
+    (200, True, ["Bodega", "Norte", "Centro", "Casa A"], "7", 3),
+    lambda: route("Bodega", "Casa A"),
+)
+
 section("RESUMEN")
 passed = sum(results)
 print(f"{passed}/{len(results)} escenarios pasaron")
