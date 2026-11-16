@@ -2,12 +2,12 @@
   // T13 (Mariana): la red de GET /network en 3D, como una ciudad de WareTrack.
   // La escena vive en city3d.js; la página #/tracking la usa con cámara de seguimiento.
   import { onMount } from 'svelte'
-  import { animateCity, createCity, createStage, disposeObject, makeTruck, placeTruck, truckState } from './city3d.js'
+  import { animateCity, createCity, createStage, disposeObject, makeTruck, placeTruck, createRun, stepTruck } from './city3d.js'
 
   let { network, route = null } = $props()
 
   let container
-  let stage, city, truck, startTime = 0, now = 0
+  let stage, city, truck, run
 
   function build() {
     if (!stage) return
@@ -20,7 +20,7 @@
     stage.camera.position.set(city.radius * 0.7, city.radius * 1.15, city.radius * 1.5)
     stage.controls.target.set(0, 0, 0)
     truck.visible = !!city.timeline
-    startTime = now
+    run = createRun()
   }
 
   onMount(() => {
@@ -29,8 +29,7 @@
     stage.scene.add(truck)
     build()
     stage.start((time, dt) => {
-      now = time
-      if (city.timeline) placeTruck(truck, truckState(city.timeline, time - startTime), dt)
+      if (city.timeline) placeTruck(truck, stepTruck(city.timeline, run, dt, time), dt)
       animateCity(city.group, time)
     })
     return () => stage.dispose()

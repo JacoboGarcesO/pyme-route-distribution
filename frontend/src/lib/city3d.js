@@ -22,6 +22,19 @@ const SPEED = 10
 const LOAD = 2
 const STOP = 2.2
 const END = 2.5
+const ACCEL = 6 // aceleración y frenado del camión (unidades/s²)
+const DECEL = 9
+const STOP_LINE = 6.4 // distancia del centro del cruce a la línea de pare
+const TRUCK_NOSE = 2.2 // del centro del camión a su parachoques
+
+// Semáforos: las calles del mismo eje comparten fase y los dos ejes nunca
+// están en verde a la vez. Ciclo de 14 s: verde 6, amarillo 1.5, rojo 6.5.
+const SIGNAL_CYCLE = 14
+export function signalColor(phase, time) {
+  const t = (time + phase * (SIGNAL_CYCLE / 2)) % SIGNAL_CYCLE
+  return t < 6 ? 'g' : t < 7.5 ? 'y' : 'r'
+}
+const axisPhase = (out) => (Math.abs(out.x) >= Math.abs(out.z) ? 0 : 1)
 
 const WALLS = [0xffffff, 0xfdf6e3, 0xfde2cf, 0xe0ecff, 0xe5e7eb, 0xf5e1c8, 0xe8f5e9, 0xfce7f3]
 const ROOFS = [0xb45309, 0x64748b, 0xd9603b, 0x8b5a3c, 0x9ca3af] // sin azul: el techo azul es del cliente
@@ -658,20 +671,19 @@ function pedestrian(rand) {
 }
 
 // Semáforo en la esquina, mirando hacia `facing` (los carros que llegan al cruce).
-function trafficLight(B, position, facing, phase, lamps, mats, group) {
+function trafficLight(B, position, facing, phase, lamps) {
   const L = B.frame(position, facing)
   L('cyl', 0x334155, 0, 2.2, 0, 0.24, 4.4, 0.24)
   L('box', 0x1f2937, 0, 4.6, 0, 0.75, 2, 0.5)
   L('box', 0x111827, 0, 5.65, 0.05, 0.8, 0.1, 0.6, false)
+  L('box', 0xfacc15, 0, 4.6, -0.27, 0.8, 2.05, 0.04, false) // placa trasera
   ;['r', 'y', 'g'].forEach((color, i) => {
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mats.off)
-    lamp.position.copy(position).addScaledVector(facing, 0.27).setY(5.2 - i * 0.6)
-    lamp.userData = { color, phase }
-    lamps.push(lamp)
-    group.add(lamp)
+    lamps.push({ position: position.clone().addScaledVector(facing, 0.27).setY(5.2 - i * 0.6), color, phase })
     L('box', 0x111827, 0, 5.38 - i * 0.6, 0.38, 0.5, 0.06, 0.28, false) // visera
   })
 }
+
+const LAMP_COLORS = { r: new THREE.Color(0xff3b30), y: new THREE.Color(0xffcc00), g: new THREE.Color(0x22c55e), off: new THREE.Color(0x3a4150) }
 
 // ---------- Ciudad ----------
 
@@ -737,6 +749,7 @@ export function createCity(network, route) {
     if (n.dot(new THREE.Vector3().subVectors(p, foot)) < 0) n.negate()
     const number = crossNumber(byId.get(s.from).name, s.name)
     addresses.set(point.id, {
+      street: s,
       park: foot.clone().addScaledVector(n, s.width / 2 - 1.3),
       site: foot.clone().addScaledVector(n, s.width / 2 + WALK + 0.6 + LOT / 2),
       front: n.clone().negate(),
@@ -844,13 +857,7 @@ export function createCity(network, route) {
   }
 
   // ---- Esquinas: placas de nomenclatura y semáforos ----
-  const lampMats = {
-    off: new THREE.MeshStandardMaterial({ color: 0x374151 }),
-    r: new THREE.MeshBasicMaterial({ color: 0xff3b30 }),
-    y: new THREE.MeshBasicMaterial({ color: 0xffcc00 }),
-    g: new THREE.MeshBasicMaterial({ color: 0x22c55e }),
-  }
-  anim.lampMats = lampMats
+  const signals = new Map() // cruce -> (punto del que llega el tráfico -> fase)
   for (const point of network) {
     const p = pos.get(point.id)
     const around = incident.get(point.id)
@@ -882,11 +889,22 @@ export function createCity(network, route) {
       group.add(board)
     }
 
+    // Un semáforo por cada calle por la que llega tráfico al cruce, a la derecha
+    // de quien llega, con su línea de pare en el carril de llegada.
     if (around.length >= 3 && point.type === 'neighborhood') {
-      around.slice(0, 2).forEach(({ street, out }, i) => {
+      const approaches = new Map()
+      for (const { street, out } of around) {
+        if (!street.twoWay && street.to !== point.id) continue
+        const from = street.from === point.id ? street.to : street.from
+        const phase = axisPhase(out)
+        approaches.set(from, phase)
         const spot = p.clone().addScaledVector(out, CROSS / 2 + 2.4).addScaledVector(rightOf(out), -(street.width / 2 + WALK - 0.4))
-        trafficLight(B, spot, out, i % 2, anim.lamps, lampMats, group)
-      })
+        trafficLight(B, spot, out, phase, anim.lamps)
+        const lane = street.twoWay ? street.width / 2 : street.width
+        const line = p.clone().addScaledVector(out, STOP_LINE).addScaledVector(rightOf(out), street.twoWay ? -street.width / 4 : 0)
+        B.frame(line, out)('box', WHITE, 0, 0.115, 0, lane - 0.3, 0.03, 0.45, false)
+      }
+      signals.set(point.id, approaches)
     }
   }
 
@@ -953,23 +971,50 @@ export function createCity(network, route) {
 
   B.build(group)
 
+  // Todas las luces de semáforo en una sola InstancedMesh; su color cambia cada cuadro.
+  if (anim.lamps.length) {
+    const lampMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshBasicMaterial(), anim.lamps.length)
+    const m = new THREE.Matrix4()
+    anim.lamps.forEach((lamp, i) => {
+      lampMesh.setMatrixAt(i, m.makeTranslation(lamp.position.x, lamp.position.y, lamp.position.z))
+      lampMesh.setColorAt(i, LAMP_COLORS.off)
+    })
+    anim.lampMesh = lampMesh
+    group.add(lampMesh)
+  }
+
   // ---- Ruta del camión: por su carril, parqueando frente a la casa del cliente ----
   let tl = null
   if (found && route.path.length > 1) {
     const anchor = (id) => addresses.get(id)?.park ?? pos.get(id)
     const raw = route.path.map((p) => anchor(p.id).clone())
+    // Si la casa queda en la calle por la que ya viene el camión, se parquea al pasar
+    // frente a ella en vez de seguir hasta la esquina y devolverse.
+    const n = route.path.length
+    const home = addresses.get(route.path[n - 1].id)
+    const ends = home ? [home.street.from, home.street.to] : []
+    const parkOnTheWay = n >= 3 && ends.includes(route.path[n - 2].id) && ends.includes(route.path[n - 3].id)
+    if (parkOnTheWay) raw[n - 2] = raw[n - 1].clone()
     const lanes = raw.slice(1).map((b, i) => {
       const a = raw[i]
       const e = edgeOf(route.path[i].id, route.path[i + 1].id)
       const offset = e?.twoWay && !isAddress(route.path[i].id) && !isAddress(route.path[i + 1].id) ? 1.5 : 0
-      return rightOf(new THREE.Vector3().subVectors(b, a).normalize()).multiplyScalar(offset)
+      const dir = new THREE.Vector3().subVectors(b, a)
+      return dir.lengthSq() < 1e-6 ? dir : rightOf(dir.normalize()).multiplyScalar(offset)
     })
     const points = raw.map((p, i) => {
       const before = lanes[i - 1] ?? lanes[i]
       const after = lanes[i] ?? lanes[i - 1]
       return p.clone().add(before.clone().add(after).multiplyScalar(0.5)).setY(0.1)
     })
+    if (parkOnTheWay) points[n - 2] = points[n - 1].clone()
     tl = timeline(route, points)
+    // Líneas de pare con semáforo que el camión encuentra en su recorrido.
+    tl.signals = route.path
+      .map((p, k) => ({ k, phase: k > 0 ? signals.get(p.id)?.get(route.path[k - 1].id) : undefined }))
+      .filter(({ k, phase }) => phase !== undefined && !(parkOnTheWay && k === n - 2))
+      .map(({ k, phase }) => ({ d: tl.cum[k] - STOP_LINE - TRUCK_NOSE, phase }))
+      .filter(({ d }) => d > 0)
 
     const ribbon = new THREE.MeshBasicMaterial({ color: BLUE, transparent: true, opacity: 0.75 })
     points.slice(1).forEach((b, i) => {
@@ -1029,20 +1074,19 @@ function timeline(route, points) {
     total,
     stopIndex,
     costs: route.connections.map((c) => Number(c.cost_km)),
-    cycle: LOAD + total / SPEED + (stopIndex > 0 ? STOP : 0) + END,
+    signals: [],
   }
 }
 
 // `focus` (opcional): los peatones lejos de la zona nítida no se animan ni se dibujan.
 export function animateCity(group, time, focus = null) {
-  const { pulses = [], bobs = [], lamps = [], walkers = [], lampMats } = group.userData
+  const { pulses = [], bobs = [], lamps = [], walkers = [], lampMesh } = group.userData
   for (const o of pulses) o.scale.setScalar(1 + Math.sin(time * 4) * 0.12)
   for (const o of bobs) o.position.y = o.userData.baseY + Math.sin(time * 3) * 0.3
-  // Ciclo de 10 s: verde 4, amarillo 1, rojo 5; la fase 1 va desfasada medio ciclo.
-  for (const lamp of lamps) {
-    const t = (time + lamp.userData.phase * 5) % 10
-    const active = t < 4 ? 'g' : t < 5 ? 'y' : 'r'
-    lamp.material = lamp.userData.color === active ? lampMats[active] : lampMats.off
+  if (lampMesh) {
+    const active = [signalColor(0, time), signalColor(1, time)]
+    lamps.forEach((lamp, i) => lampMesh.setColorAt(i, LAMP_COLORS[lamp.color === active[lamp.phase] ? lamp.color : 'off']))
+    lampMesh.instanceColor.needsUpdate = true
   }
   const far = FOCUS_HALF + 20
   for (const w of walkers) {
@@ -1127,40 +1171,65 @@ export function makeTruck() {
   return g
 }
 
-// Estado del camión en el instante `time` del ciclo: posición, rumbo, fase y km restantes.
-export function truckState(tl, time) {
-  let t = time % tl.cycle
-  let d
-  let phase
+// Recorrido simulado cuadro a cuadro: carga en A, avanza, frena en rojo, espera
+// en la parada y entrega en B; luego vuelve a empezar.
+export function createRun() {
+  return { d: 0, v: 0, phase: 'loading', timer: LOAD, passedStop: false, cleared: new Set(), waiting: false }
+}
+
+export function stepTruck(tl, run, dt, time) {
   const stopD = tl.stopIndex > 0 ? tl.cum[tl.stopIndex] : -1
-  const firstLeg = (stopD >= 0 ? stopD : tl.total) / SPEED
-  if (t < LOAD) {
-    d = 0
-    phase = 'loading'
-  } else if ((t -= LOAD) < firstLeg) {
-    d = t * SPEED
-    phase = stopD >= 0 ? 'toStop' : 'toDest'
-  } else if (stopD >= 0 && t < firstLeg + STOP) {
-    d = stopD
-    phase = 'stop'
+  const moving = () => (stopD >= 0 && !run.passedStop ? 'toStop' : 'toDest')
+  run.waiting = false
+  if (run.phase === 'loading' || run.phase === 'stop' || run.phase === 'delivered') {
+    run.timer -= dt
+    if (run.timer <= 0) {
+      if (run.phase === 'delivered') Object.assign(run, createRun())
+      else run.phase = moving()
+    }
   } else {
-    d = stopD >= 0 ? stopD + (t - firstLeg - STOP) * SPEED : tl.total
-    phase = 'toDest'
+    // Próximo punto donde hay que detenerse: la parada, B o un semáforo que no deja pasar.
+    let target = stopD >= 0 && !run.passedStop ? stopD : tl.total
+    for (const [i, signal] of tl.signals.entries()) {
+      if (signal.d < run.d - 0.05 || signal.d >= target || run.cleared.has(i)) continue
+      const color = signalColor(signal.phase, time)
+      const braking = (run.v * run.v) / (2 * DECEL)
+      const gap = signal.d - run.d
+      // En verde cerca de la línea, o en amarillo sin espacio para frenar, cruza y ya no vuelve a mirar ese semáforo.
+      if ((color === 'g' && gap < braking + 1) || (color === 'y' && gap < braking * 0.6 && run.v > 1)) run.cleared.add(i)
+      else if (color !== 'g') target = signal.d
+      break
+    }
+    const gap = Math.max(0, target - run.d)
+    const limit = Math.min(SPEED, Math.sqrt(2 * DECEL * gap))
+    run.v = limit < run.v ? limit : Math.min(limit, run.v + ACCEL * dt)
+    run.d = Math.min(target, run.d + run.v * dt)
+    const arrived = target - run.d < 0.02
+    if (arrived && target === tl.total) Object.assign(run, { phase: 'delivered', timer: END, v: 0 })
+    else if (arrived && target === stopD && !run.passedStop) Object.assign(run, { phase: 'stop', timer: STOP, v: 0, passedStop: true })
+    else {
+      run.phase = moving()
+      run.waiting = run.v < 0.5 && gap < 3
+    }
   }
-  if (d >= tl.total) {
-    d = tl.total
-    phase = 'delivered'
-  }
+  return { ...poseAt(tl, run.d), phase: run.phase, waiting: run.waiting }
+}
+
+function poseAt(tl, d) {
   let i = 0
   while (i < tl.lengths.length - 1 && d > tl.cum[i + 1]) i++
   const frac = tl.lengths[i] ? (d - tl.cum[i]) / tl.lengths[i] : 0
   const a = tl.points[i]
   const b = tl.points[i + 1]
-  const remainingKm = Math.max(0, tl.costs.slice(i + 1).reduce((s, c) => s + c, tl.costs[i] * (1 - frac)))
+  // Un tramo de largo cero (parqueo en el camino) conserva el rumbo del tramo anterior.
+  let j = i
+  while (j > 0 && tl.lengths[j] < 1e-6) j--
+  const [ha, hb] = [tl.points[j], tl.points[j + 1]]
+  const left = tl.costs.slice(i + 1).reduce((s, c) => s + c, tl.costs[i] * (1 - frac))
+  const remainingKm = d >= tl.total - 0.01 ? 0 : Math.max(0, left)
   return {
     position: new THREE.Vector3().lerpVectors(a, b, frac),
-    heading: Math.atan2(b.x - a.x, b.z - a.z) - Math.PI / 2, // el frente del camión es +x
-    phase,
+    heading: Math.atan2(hb.x - ha.x, hb.z - ha.z) - Math.PI / 2, // el frente del camión es +x
     segment: i,
     distance: d,
     remainingKm,

@@ -4,7 +4,7 @@
   import { onMount } from 'svelte'
   import * as THREE from 'three'
   import { getNetwork, getShortestPath } from './api.js'
-  import { animateCity, createCity, createStage, disposeObject, makeTruck, placeTruck, truckState } from './city3d.js'
+  import { animateCity, createCity, createStage, disposeObject, makeTruck, placeTruck, createRun, stepTruck } from './city3d.js'
   import ErrorMessage from './ErrorMessage.svelte'
   import { pointTypeLabel } from './pointTypes.js'
 
@@ -17,14 +17,15 @@
   let routeError = $state(null)
   let loading = $state(false)
   let following = $state(true)
+  let detailOpen = $state(true) // paneles de la derecha, colapsables
+  let stopsOpen = $state(true)
   let status = $state(null) // { phase, segment, distance, remainingKm }
   let clock = $state('')
   let addresses = $state(new Map()) // id del cliente -> dirección en el mapa
 
   let container
   let stage, city, truck
-  let startTime = 0
-  let now = 0
+  let run = createRun() // estado de la simulación del camión
   let lastUi = 0
   let zoom = 1
   const desired = new THREE.Vector3()
@@ -53,7 +54,7 @@
         ],
   )
   const stepIndex = $derived(status ? steps.findIndex(([key]) => key === status.phase) : 0)
-  const phaseLabel = $derived(steps[stepIndex]?.[1] ?? '')
+  const phaseLabel = $derived(status?.waiting ? 'Esperando semáforo' : (steps[stepIndex]?.[1] ?? ''))
   const nextIndex = $derived(status && moving ? Math.min(status.segment + 1, route.path.length - 1) : -1)
   const nextPoint = $derived(nextIndex >= 0 ? byId.get(route.path[nextIndex].id) : null)
 
@@ -99,7 +100,7 @@
     stage.scene.add(city.group)
     addresses = city.addresses
     truck.visible = !!city.timeline
-    startTime = now
+    run = createRun()
     status = null
     if (!city.timeline) overview()
   }
@@ -148,9 +149,8 @@
     stage.scene.add(truck)
     build()
     stage.start((time, dt) => {
-      now = time
       if (city.timeline) {
-        const state = truckState(city.timeline, time - startTime)
+        const state = stepTruck(city.timeline, run, dt, time)
         placeTruck(truck, state, dt)
         if (following) follow(dt)
         if (time - lastUi > 0.15) {
@@ -182,7 +182,7 @@
   <div class="scene" bind:this={container}></div>
 
   <header class="topbar card">
-    <a class="wt-brand" href="#" title="Volver al panel">
+    <a class="wt-brand" href="#/" title="Volver al panel">
       <span class="logo" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.3L18.7 8 12 11.7 5.3 8 12 4.3Z" /></svg>
       </span>
@@ -218,7 +218,7 @@
 
     <div class="top-right">
       <span class="live"><i></i>En vivo {clock}</span>
-      <a class="back" href="#">← Panel</a>
+      <a class="back" href="#/">← Panel</a>
     </div>
   </header>
 
@@ -248,34 +248,52 @@
     </button>
   </div>
 
-  <aside class="detail card" aria-live="polite">
-    {#if nextPoint}
-      <div class="detail-head">
-        <span class="detail-icon {nextPoint.type}" aria-hidden="true"></span>
-        <div>
-          <small>{status?.phase === 'delivered' ? 'Entregado en' : status?.phase === 'stop' ? 'Detenido en' : 'Próximo punto'}</small>
-          <strong>{nextPoint.name}</strong>
-          <em>{nextPoint.id.slice(0, 8)}</em>
-        </div>
-      </div>
-      <span class="chip">{phaseLabel}</span>
-      <dl>
-        <div><dt>Tipo</dt><dd>{pointTypeLabel(nextPoint.type)}</dd></div>
-        {#if addresses.get(nextPoint.id)}<div><dt>Dirección</dt><dd>{addresses.get(nextPoint.id)}</dd></div>{/if}
-        <div><dt>Rol en la ruta</dt><dd>{nextIndex === route.path.length - 1 ? 'Destino B' : route.path[nextIndex].id === route.via_id ? 'Parada obligatoria' : 'Paso intermedio'}</dd></div>
-        <div><dt>Conexiones salientes</dt><dd>{nextPoint.connections.length}</dd></div>
-        {#if nextPoint.x != null}<div><dt>Posición en el mapa</dt><dd>{nextPoint.x}, {nextPoint.y}</dd></div>{/if}
-        <div><dt>Distancia restante</dt><dd>{status.remainingKm.toFixed(1)} km</dd></div>
-        <div><dt>Tramo</dt><dd>{Math.min(status.segment + 1, route.connections.length)} de {route.connections.length}</dd></div>
-      </dl>
-    {:else}
-      <div class="detail-head">
-        <span class="detail-icon" aria-hidden="true"></span>
-        <div><small>Despacho</small><strong>Sin camión en ruta</strong></div>
-      </div>
-      <p class="muted">Elige el punto A, el punto B y, si hace falta, una parada. Luego pulsa <b>Despachar</b>.</p>
+  <div class="side">
+    <aside class="detail card" aria-live="polite">
+      <button type="button" class="panel-toggle" aria-expanded={detailOpen} onclick={() => (detailOpen = !detailOpen)}>
+        <span class="detail-icon {nextPoint?.type ?? ''}" aria-hidden="true"></span>
+        <span class="toggle-text">
+          <small>{!nextPoint ? 'Despacho' : status?.phase === 'delivered' ? 'Entregado en' : status?.phase === 'stop' ? 'Detenido en' : 'Próximo punto'}</small>
+          <strong>{nextPoint?.name ?? 'Sin camión en ruta'}</strong>
+        </span>
+        <svg class="chevron" class:open={detailOpen} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {#if detailOpen}
+        {#if nextPoint}
+          <dl>
+            {#if addresses.get(nextPoint.id)}<div><dt>Dirección</dt><dd>{addresses.get(nextPoint.id)}</dd></div>{/if}
+            <div><dt>Rol en la ruta</dt><dd>{nextIndex === route.path.length - 1 ? 'Destino B' : route.path[nextIndex].id === route.via_id ? 'Parada obligatoria' : pointTypeLabel(nextPoint.type)}</dd></div>
+            <div><dt>Tramo</dt><dd>{Math.min(status.segment + 1, route.connections.length)} de {route.connections.length}</dd></div>
+          </dl>
+        {:else}
+          <p class="muted">Elige el punto A, el punto B y, si hace falta, una parada. Luego pulsa <b>Despachar</b>.</p>
+        {/if}
+      {/if}
+    </aside>
+
+    {#if moving}
+      <section class="stops card" aria-label="Recorrido">
+        <button type="button" class="panel-toggle" aria-expanded={stopsOpen} onclick={() => (stopsOpen = !stopsOpen)}>
+          <span class="toggle-text"><strong>Recorrido</strong></span>
+          <span class="muted">{route.path.length} puntos</span>
+          <svg class="chevron" class:open={stopsOpen} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+        {#if stopsOpen}
+          <ol>
+            {#each route.path as point, index (index)}
+              <li class={pointState(index)}>
+                <span class="bullet" aria-hidden="true"></span>
+                <span class="stop-name">{point.name}</span>
+                <span class="tag">
+                  {index === 0 ? 'A' : index === route.path.length - 1 ? 'B' : point.id === route.via_id ? 'Parada' : pointTypeLabel(point.type)}
+                </span>
+              </li>
+            {/each}
+          </ol>
+        {/if}
+      </section>
     {/if}
-  </aside>
+  </div>
 
   {#if moving && !following}
     <button type="button" class="recenter" onclick={recenter}>
@@ -285,14 +303,6 @@
   {/if}
 
   <section class="tracking card" aria-label="Seguimiento del envío">
-    <div class="tracking-head">
-      <h2>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" /></svg>
-        Seguimiento del envío
-      </h2>
-      <span class="muted">TRK-01 · WareTrack</span>
-    </div>
-
     {#if networkError}
       <ErrorMessage error={networkError} />
     {:else if routeError}
@@ -300,50 +310,25 @@
     {:else if route && !route.found}
       <p class="no-route"><strong>No hay ruta.</strong> {route.reason}</p>
     {:else if moving}
-      <div class="tracking-body">
-        <ol class="stepper">
-          {#each steps as [key, text], index (key)}
-            <li class:done={index < stepIndex || status?.phase === 'delivered'} class:active={index === stepIndex && status?.phase !== 'delivered'}>
-              <span class="dot" aria-hidden="true">{index < stepIndex || status?.phase === 'delivered' ? '✓' : index + 1}</span>
-              <span class="step-label">{text}</span>
-            </li>
-          {/each}
-        </ol>
-        <div class="shipment">
-          <svg class="mini-truck" width="56" height="36" viewBox="0 0 56 36" aria-hidden="true"><rect x="2" y="6" width="32" height="20" rx="3" fill="#fff" stroke="#cbd5e1" /><rect x="2" y="18" width="32" height="4" fill="#14b8a6" /><path d="M34 12h10l8 8v6H34z" fill="#fff" stroke="#cbd5e1" /><rect x="44" y="14" width="5" height="5" fill="#1e293b" /><circle cx="12" cy="28" r="4" fill="#111827" /><circle cx="44" cy="28" r="4" fill="#111827" /></svg>
-          <div>
-            <strong>{route.path[0].name} → {route.path.at(-1).name}</strong>
-            {#if addresses.get(route.path.at(-1).id)}<small>Entrega en {addresses.get(route.path.at(-1).id)}</small>{/if}
-            {#if hasVia}<small>Parada: {byId.get(route.via_id)?.name}</small>{/if}
-            <span class="chip">{phaseLabel}</span>
-            <small>{status ? `${status.remainingKm.toFixed(1)} km restantes de ${route.total_cost_km} km` : `${route.total_cost_km} km`}</small>
-          </div>
-        </div>
+      <div class="tracking-head">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" /></svg>
+        <strong class="route-name">{route.path[0].name} → {route.path.at(-1).name}</strong>
+        <span class="chip" class:wait={status?.waiting}>{phaseLabel}</span>
+        <span class="km">{(status?.remainingKm ?? Number(route.total_cost_km)).toFixed(1)} km</span>
       </div>
+      <ol class="stepper">
+        {#each steps as [key, text], index (key)}
+          <li class:done={index < stepIndex || status?.phase === 'delivered'} class:active={index === stepIndex && status?.phase !== 'delivered'}>
+            <span class="dot" aria-hidden="true">{index < stepIndex || status?.phase === 'delivered' ? '✓' : index + 1}</span>
+            <span class="step-label">{text}</span>
+          </li>
+        {/each}
+      </ol>
     {:else}
       <p class="muted">Sin envíos en curso. Despacha un camión desde la barra superior.</p>
     {/if}
   </section>
 
-  {#if moving}
-    <section class="stops card" aria-label="Recorrido">
-      <div class="tracking-head">
-        <h2>Recorrido</h2>
-        <span class="muted">{route.path.length} puntos</span>
-      </div>
-      <ol>
-        {#each route.path as point, index (index)}
-          <li class={pointState(index)}>
-            <span class="bullet" aria-hidden="true"></span>
-            <span class="stop-name">{point.name}</span>
-            <span class="tag">
-              {index === 0 ? 'A' : index === route.path.length - 1 ? 'B' : point.id === route.via_id ? 'Parada' : pointTypeLabel(point.type)}
-            </span>
-          </li>
-        {/each}
-      </ol>
-    </section>
-  {/if}
 </div>
 
 <style>
@@ -383,6 +368,11 @@
     font-weight: 700;
     color: #047857;
     background: #dcfce7;
+  }
+
+  .chip.wait {
+    color: #b91c1c;
+    background: #fee2e2;
   }
 
   /* Barra superior */
@@ -522,7 +512,7 @@
   .map-tools {
     position: absolute;
     top: 108px;
-    right: 352px;
+    right: 326px;
     display: grid;
     padding: 4px;
     gap: 2px;
@@ -549,45 +539,80 @@
     background: var(--blue);
   }
 
-  /* Detalle del próximo punto */
-  .detail {
+  /* Columna derecha: detalle y recorrido, colapsables */
+  .side {
     position: absolute;
     top: 108px;
     right: 14px;
-    width: 326px;
-    display: grid;
-    gap: 10px;
-    padding: 14px 16px;
-  }
-  .detail-head {
+    bottom: 14px;
+    width: 300px;
     display: flex;
-    gap: 12px;
-    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
   }
-  .detail-head div {
+  .side > * {
+    pointer-events: auto;
+  }
+  .detail {
     display: grid;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .panel-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: var(--text);
+    background: transparent;
+    box-shadow: none;
+    text-align: left;
+    font-weight: 400;
+  }
+  .panel-toggle:hover:not(:disabled) {
+    background: transparent;
+    transform: none;
+  }
+  .panel-toggle:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
+  }
+  .toggle-text {
+    flex: 1;
+    display: grid;
+    min-width: 0;
     line-height: 1.25;
   }
-  .detail-head small {
-    font-size: 0.7rem;
+  .toggle-text small {
+    font-size: 0.66rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--blue);
   }
-  .detail-head strong {
-    font-size: 1.02rem;
+  .toggle-text strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.92rem;
   }
-  .detail-head em {
-    font-style: normal;
-    font-size: 0.72rem;
+  .chevron {
+    flex: none;
     color: var(--muted);
+    transition: transform 0.2s;
+  }
+  .chevron.open {
+    transform: rotate(180deg);
   }
   .detail-icon {
     flex: none;
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
     background: var(--blue-soft);
   }
   .detail-icon.warehouse { background: #fff4dc; }
@@ -601,9 +626,9 @@
     display: flex;
     justify-content: space-between;
     gap: 10px;
-    padding: 6px 0;
+    padding: 5px 0;
     border-top: 1px solid var(--line);
-    font-size: 0.82rem;
+    font-size: 0.8rem;
   }
   dt {
     color: var(--muted);
@@ -618,7 +643,7 @@
   .recenter {
     position: absolute;
     left: 50%;
-    bottom: 200px;
+    bottom: 120px;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
@@ -638,32 +663,35 @@
     position: absolute;
     left: 14px;
     bottom: 14px;
-    width: min(720px, calc(100% - 370px));
-    padding: 12px 16px 14px;
+    width: min(500px, calc(100% - 340px));
+    padding: 10px 14px 12px;
   }
   .tracking-head {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .tracking-head h2 {
-    display: flex;
     align-items: center;
     gap: 8px;
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 800;
+    margin-bottom: 10px;
+    font-size: 0.82rem;
   }
-  .tracking-head h2 svg {
+  .tracking-head svg {
+    flex: none;
     color: var(--blue);
   }
-  .tracking-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 250px;
-    gap: 16px;
-    align-items: center;
+  .route-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tracking-head .chip {
+    align-self: center;
+  }
+  .km {
+    flex: none;
+    font-weight: 700;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
   .stepper {
     display: flex;
@@ -682,10 +710,10 @@
   .stepper li + li::before {
     content: '';
     position: absolute;
-    top: 14px;
+    top: 10px;
     right: 50%;
     width: 100%;
-    height: 3px;
+    height: 2px;
     background: var(--line);
     z-index: 0;
   }
@@ -698,10 +726,10 @@
     z-index: 1;
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    font-size: 0.75rem;
+    font-size: 0.66rem;
     font-weight: 800;
     color: #94a3b8;
     background: #f1f5f9;
@@ -716,10 +744,10 @@
     color: var(--blue);
     background: #ffffff;
     border-color: var(--blue);
-    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.18);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
   }
   .step-label {
-    font-size: 0.72rem;
+    font-size: 0.64rem;
     font-weight: 600;
     color: var(--muted);
     line-height: 1.2;
@@ -727,31 +755,6 @@
   .active .step-label,
   .done .step-label {
     color: var(--text);
-  }
-  .shipment {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--line);
-    background: #f8fafd;
-  }
-  .shipment div {
-    display: grid;
-    gap: 3px;
-    min-width: 0;
-  }
-  .shipment strong {
-    font-size: 0.86rem;
-    overflow-wrap: anywhere;
-  }
-  .shipment small {
-    font-size: 0.74rem;
-    color: var(--muted);
-  }
-  .mini-truck {
-    flex: none;
   }
   .no-route {
     margin: 0;
@@ -761,14 +764,16 @@
 
   /* Recorrido */
   .stops {
-    position: absolute;
-    right: 14px;
-    bottom: 14px;
-    width: 326px;
-    padding: 12px 16px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    margin-top: auto;
+    padding: 10px 12px;
   }
   .stops ol {
-    max-height: 190px;
+    min-height: 0;
+    max-height: 210px;
     overflow-y: auto;
     margin: 0;
     padding: 0;
@@ -826,17 +831,15 @@
     .topbar { flex-wrap: wrap; }
     .route-form { order: 3; flex-basis: 100%; flex-wrap: wrap; justify-content: flex-start; }
     .route-form select { width: 150px; }
-    .wt-kpis, .map-tools, .detail { top: 172px; }
-    .stops { display: none; }
+    .wt-kpis, .map-tools, .side { top: 172px; }
+    .side { bottom: 150px; }
     .tracking { width: calc(100% - 28px); }
-    .recenter { bottom: 230px; }
+    .recenter { bottom: 150px; }
   }
   @media (max-width: 760px) {
-    .wt-kpis, .detail { display: none; }
-    .map-tools { right: 14px; top: auto; bottom: 280px; }
-    .recenter { bottom: 290px; }
-    .mini-truck { display: none; }
-    .tracking-body { grid-template-columns: minmax(0, 1fr); }
+    .wt-kpis, .side { display: none; }
+    .map-tools { right: 14px; top: auto; bottom: 150px; }
+    .recenter { bottom: 160px; }
     .step-label { display: none; }
   }
 </style>
