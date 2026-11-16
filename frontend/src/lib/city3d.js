@@ -19,9 +19,9 @@ const LOT = 7 // fondo de un lote
 export const FOCUS_HALF = SCALE * 1.5
 // Recorrido del camión: unidades por segundo y pausas en A, en la parada y en B.
 const SPEED = 10
-const LOAD = 2
-const STOP = 2.2
-const END = 2.5
+const LOAD = 3.2
+const STOP = 6
+const END = 6.5
 const ACCEL = 6 // aceleración y frenado del camión (unidades/s²)
 const DECEL = 9
 const STOP_LINE = 6.4 // distancia del centro del cruce a la línea de pare
@@ -640,6 +640,16 @@ function pin(color, text) {
   return g
 }
 
+function boxMesh() {
+  const g = new THREE.Group()
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.48, 0.5), new THREE.MeshStandardMaterial({ color: 0xc8a26b, roughness: 0.9 }))
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.05, 0.14), new THREE.MeshStandardMaterial({ color: 0xece3cf }))
+  tape.position.y = 0.245
+  box.castShadow = true
+  g.add(box, tape)
+  return g
+}
+
 function pedestrian(rand) {
   const g = new THREE.Group()
   const mat = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.8 })
@@ -739,10 +749,13 @@ export function createCity(network, route) {
   const addresses = new Map()
   for (const point of network.filter((p) => p.type === 'pickup_point')) {
     const p = pos.get(point.id)
-    const near = streets.filter((s) => neighbors.get(point.id).has(s.from) || neighbors.get(point.id).has(s.to))
+    const around = neighbors.get(point.id)
+    const near = streets.filter((s) => around.has(s.from) || around.has(s.to))
     const candidates = near.length ? near : streets
     if (!candidates.length) continue
-    const s = candidates.reduce((best, c) => (segmentDistance(p, c.a, c.b) < segmentDistance(p, best.a, best.b) ? c : best))
+    const s =
+      streets.find((c) => around.has(c.from) && around.has(c.to)) ??
+      candidates.reduce((best, c) => (segmentDistance(p, c.a, c.b) < segmentDistance(p, best.a, best.b) ? c : best))
     const t = THREE.MathUtils.clamp(new THREE.Vector3().subVectors(p, s.a).dot(s.dir) / s.len, 0.3, 0.7)
     const foot = s.a.clone().addScaledVector(s.dir, t * s.len)
     const n = rightOf(s.dir)
@@ -753,6 +766,7 @@ export function createCity(network, route) {
       park: foot.clone().addScaledVector(n, s.width / 2 - 1.3),
       site: foot.clone().addScaledVector(n, s.width / 2 + WALK + 0.6 + LOT / 2),
       front: n.clone().negate(),
+      door: foot.clone().addScaledVector(n, s.width / 2 + WALK + 0.6 + LOT / 2 - 3.1),
       text: s.name && number ? `${s.name} # ${number}-${String(Math.round(t * 100)).padStart(2, '0')}` : null,
     })
   }
@@ -765,7 +779,8 @@ export function createCity(network, route) {
     for (const n of neighbors.get(point.id)) away.add(new THREE.Vector3().subVectors(p, pos.get(n)).normalize())
     if (away.lengthSq() === 0) away.set(0, 0, -1)
     away.normalize()
-    sites.set(point.id, { site: p.clone().addScaledVector(away, 13), front: away.clone().negate() })
+    const site = p.clone().addScaledVector(away, 13)
+    sites.set(point.id, { site, front: away.clone().negate(), door: site.clone().addScaledVector(away, -4.8) })
   }
 
   // ---- Calles: asfalto, aceras, cebras, marcas, costo pintado y señales ----
@@ -1011,7 +1026,10 @@ export function createCity(network, route) {
     tl = timeline(route, points)
     // Líneas de pare con semáforo que el camión encuentra en su recorrido.
     tl.signals = route.path
-      .map((p, k) => ({ k, phase: k > 0 ? signals.get(p.id)?.get(route.path[k - 1].id) : undefined }))
+      .map((p, k) => {
+        const from = k > 1 && isAddress(route.path[k - 1].id) ? route.path[k - 2].id : route.path[k - 1]?.id
+        return { k, phase: k > 0 ? signals.get(p.id)?.get(from) : undefined }
+      })
       .filter(({ k, phase }) => phase !== undefined && !(parkOnTheWay && k === n - 2))
       .map(({ k, phase }) => ({ d: tl.cum[k] - STOP_LINE - TRUCK_NOSE, phase }))
       .filter(({ d }) => d > 0)
@@ -1049,9 +1067,42 @@ export function createCity(network, route) {
     }
   }
 
+  let crew = null
+  if (tl) {
+    const n = route.path.length
+    const dir0 = new THREE.Vector3().subVectors(tl.points[1], tl.points[0])
+    if (dir0.lengthSq() < 1e-6) dir0.set(1, 0, 0)
+    dir0.normalize()
+    const origin = sites.get(route.path[0].id) ?? addresses.get(route.path[0].id)
+    const dock = origin?.door ?? tl.points[0].clone().addScaledVector(rightOf(dir0), 6)
+    const across = origin ? new THREE.Vector3(origin.front.z, 0, -origin.front.x) : dir0.clone()
+    const rear = tl.points[0].clone().addScaledVector(dir0, -2.3)
+    const loaders = [-1.4, 1.4].map((offset, i) => {
+      const worker = { person: pedestrian(rand), box: boxMesh(), dock: dock.clone().addScaledVector(across, offset), rear: rear.clone().addScaledVector(rightOf(dir0), i ? 0.45 : -0.45) }
+      group.add(worker.person, worker.box)
+      return worker
+    })
+    const deliveries = []
+    for (const [index, final] of [[tl.stopIndex, false], [n - 1, true]]) {
+      if (index <= 0) continue
+      const id = route.path[index].id
+      const place = addresses.get(id) ?? sites.get(id)
+      if (!place) continue
+      const dropped = boxMesh()
+      dropped.position.copy(place.door).addScaledVector(place.front, 0.35).setY(addresses.has(id) ? 0.54 : 0.44)
+      dropped.visible = false
+      const courier = { final, door: place.door, person: pedestrian(rand), box: boxMesh(), dropped }
+      group.add(courier.person, courier.box, dropped)
+      deliveries.push(courier)
+    }
+    for (const o of [...loaders, ...deliveries]) o.person.visible = o.box.visible = false
+    crew = { loaders, deliveries }
+  }
+
   const radius = Math.max(40, ...nodes.map((n) => Math.max(Math.abs(n.x), Math.abs(n.z))))
   return {
     group,
+    crew,
     timeline: tl,
     radius,
     addresses: new Map([...addresses].filter(([, a]) => a.text).map(([id, a]) => [id, a.text])),
@@ -1174,12 +1225,13 @@ export function makeTruck() {
 // Recorrido simulado cuadro a cuadro: carga en A, avanza, frena en rojo, espera
 // en la parada y entrega en B; luego vuelve a empezar.
 export function createRun() {
-  return { d: 0, v: 0, phase: 'loading', timer: LOAD, passedStop: false, cleared: new Set(), waiting: false }
+  return { d: 0, v: 0, age: 0, phase: 'loading', timer: LOAD, passedStop: false, cleared: new Set(), waiting: false }
 }
 
 export function stepTruck(tl, run, dt, time) {
   const stopD = tl.stopIndex > 0 ? tl.cum[tl.stopIndex] : -1
   const moving = () => (stopD >= 0 && !run.passedStop ? 'toStop' : 'toDest')
+  run.age += dt
   run.waiting = false
   if (run.phase === 'loading' || run.phase === 'stop' || run.phase === 'delivered') {
     run.timer -= dt
@@ -1233,6 +1285,79 @@ function poseAt(tl, d) {
     segment: i,
     distance: d,
     remainingKm,
+  }
+}
+
+// ---------- Cuadrilla: carga en A y entrega en la parada y en B ----------
+
+const clamp01 = (x) => THREE.MathUtils.clamp(x, 0, 1)
+
+function walkTo(person, from, to, u, time) {
+  person.visible = true
+  person.position.lerpVectors(from, to, u).setY(0.25)
+  if (from.distanceToSquared(to) > 1e-4) person.rotation.y = Math.atan2(to.x - from.x, to.z - from.z)
+  const swing = u > 0 && u < 1 ? Math.sin(time * 9) * 0.6 : 0
+  const { legs, arms } = person.userData.limbs
+  legs[0].rotation.x = swing
+  legs[1].rotation.x = -swing
+  arms[0].rotation.x = -swing
+  arms[1].rotation.x = swing
+}
+
+function hold(person, box, carrying) {
+  box.visible = carrying
+  if (!carrying) return
+  const a = person.rotation.y
+  box.position.copy(person.position).add(new THREE.Vector3(Math.sin(a) * 0.45, 1.15, Math.cos(a) * 0.45))
+  box.rotation.y = a
+  for (const arm of person.userData.limbs.arms) arm.rotation.x = -1.2 // brazos al frente, sosteniendo la caja
+}
+
+// Entrega: [desde, hasta, ¿con caja?] por tramos de tiempo (s) desde que el camión se detiene.
+const DELIVERY = [
+  [0, 0.9, 'cab', 'rear', false], // se baja de la cabina y va atrás
+  [0.9, 1.3, 'rear', 'rear', true], // saca la caja
+  [1.3, 3.4, 'rear', 'door', true], // la lleva a la puerta
+  [3.4, 3.8, 'door', 'door', false], // la deja
+  [3.8, 5.6, 'door', 'cab', false], // vuelve a la cabina
+]
+
+export function animateCrew(crew, run, truck, time) {
+  if (!crew) return
+  // Carga: los operarios llevan una caja del muelle al camión y luego vuelven.
+  crew.loaders.forEach((w, i) => {
+    if (run.phase === 'loading') {
+      const u = clamp01((LOAD - run.timer - i * 0.5) / (LOAD - 1))
+      walkTo(w.person, w.dock, w.rear, u, time)
+      hold(w.person, w.box, u < 1)
+    } else if (run.age < LOAD + 3.5) {
+      walkTo(w.person, w.rear, w.dock, clamp01((run.age - LOAD) / 3), time)
+      hold(w.person, w.box, false)
+    } else {
+      w.person.visible = w.box.visible = false
+    }
+  })
+
+  const forward = new THREE.Vector3(Math.cos(truck.rotation.y), 0, -Math.sin(truck.rotation.y))
+  for (const c of crew.deliveries) {
+    const active = c.final ? run.phase === 'delivered' : run.phase === 'stop'
+    const e = active ? (c.final ? END : STOP) - run.timer : -1
+    c.dropped.visible = c.final ? active && e > 3.6 : run.passedStop && (run.phase !== 'stop' || e > 3.6)
+    if (!active || e > 5.6) {
+      c.person.visible = c.box.visible = false
+      continue
+    }
+    // El repartidor se baja por el lado de la casa.
+    const side = rightOf(forward)
+    if (side.dot(new THREE.Vector3().subVectors(c.door, truck.position)) < 0) side.negate()
+    const spots = {
+      cab: truck.position.clone().addScaledVector(forward, 1.2).addScaledVector(side, 1.4),
+      rear: truck.position.clone().addScaledVector(forward, -2.5).addScaledVector(side, 0.8),
+      door: c.door,
+    }
+    const [start, stop, from, to, carrying] = DELIVERY.find(([, end]) => e < end) ?? DELIVERY.at(-1)
+    walkTo(c.person, spots[from], spots[to], stop > start ? clamp01((e - start) / (stop - start)) : 1, time)
+    hold(c.person, c.box, carrying)
   }
 }
 

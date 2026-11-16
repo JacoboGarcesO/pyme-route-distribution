@@ -4,7 +4,7 @@
   import { onMount } from 'svelte'
   import * as THREE from 'three'
   import { getNetwork, getShortestPath } from './api.js'
-  import { animateCity, createCity, createStage, disposeObject, makeTruck, placeTruck, createRun, stepTruck } from './city3d.js'
+  import { animateCity, animateCrew, createCity, createStage, disposeObject, makeTruck, placeTruck, createRun, stepTruck } from './city3d.js'
   import ErrorMessage from './ErrorMessage.svelte'
   import { pointTypeLabel } from './pointTypes.js'
 
@@ -33,6 +33,8 @@
   const byId = $derived(new Map(network.map((p) => [p.id, p])))
   const connectionCount = $derived(network.reduce((s, p) => s + p.connections.length, 0))
   const warehouses = $derived(network.filter((p) => p.type === 'warehouse').length)
+  // Solo se para donde hay a quién entregar o de dónde recoger: casas y bodegas.
+  const stopPoints = $derived(network.filter((p) => p.type !== 'neighborhood'))
   const moving = $derived(route?.found && route.path.length > 1)
   const hasVia = $derived(!!route?.via_id && moving)
 
@@ -42,7 +44,7 @@
           ['confirmed', 'Ruta confirmada'],
           ['loading', 'Cargando en A'],
           ['toStop', 'Hacia la parada'],
-          ['stop', 'En parada'],
+          ['stop', 'Entregando en parada'],
           ['toDest', 'Hacia B'],
           ['delivered', 'Entregado'],
         ]
@@ -152,6 +154,7 @@
       if (city.timeline) {
         const state = stepTruck(city.timeline, run, dt, time)
         placeTruck(truck, state, dt)
+        animateCrew(city.crew, run, truck, time)
         if (following) follow(dt)
         if (time - lastUi > 0.15) {
           lastUi = time
@@ -201,7 +204,7 @@
         <span>Parada</span>
         <select bind:value={viaId}>
           <option value="">Sin parada</option>
-          {#each network as point (point.id)}<option value={point.id}>{point.name}</option>{/each}
+          {#each stopPoints as point (point.id)}<option value={point.id}>{point.name}</option>{/each}
         </select>
       </label>
       <label>

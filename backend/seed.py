@@ -95,6 +95,22 @@ CITY_HOUSES = [
     ("CasaK", "Casa K", 5.3, 3.7, "C14K10"),
 ]
 
+# Each client (except the isolated Casa D) can be a stop: the truck parks in
+# front and leaves by the far end of the same street, in its legal direction.
+# The exit costs a whole block, so going through a house is never a shortcut.
+HOUSE_EXITS = [
+    ("CasaA", "C11K7", "0.5"),
+    ("CasaB", "C11K8", "0.3"),
+    ("CasaC", "C12K7", "0.5"),
+    ("CasaE", "C11K10", "0.5"),
+    ("CasaF", "C13K11", "0.3"),
+    ("CasaG", "C13K6", "0.2"),
+    ("CasaH", "C14K7", "0.3"),
+    ("CasaI", "C16K10", "0.2"),
+    ("CasaJ", "C16K6", "0.4"),
+    ("CasaK", "C13K10", "0.2"),
+]
+
 
 def _corner(x, y):
     calle, carrera = 10 + y, 5 + x
@@ -129,6 +145,7 @@ def city_extension():
         for y in range(6):
             street((x, y), (x, y + 1), CARRERAS[5 + x], CARRERA_COSTS[y])
     connections += [(corner, label, "0.1") for label, _, _, _, corner in CITY_HOUSES]
+    connections += HOUSE_EXITS
     return points, connections
 
 
