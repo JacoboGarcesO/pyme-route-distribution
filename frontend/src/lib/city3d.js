@@ -713,6 +713,9 @@ export function createCity(network, route) {
       const dir = new THREE.Vector3().subVectors(b, a).normalize()
       return { ...e, a, b, len, dir, width: e.twoWay ? 6 : 4.4, name: sharedStreet(byId.get(e.from).name, byId.get(e.to).name) }
     })
+  // Un mueble de acera solo va donde no pisa el asfalto de otra calle (cruces incluidos).
+  const offRoad = (p, own, margin = 1.3) =>
+    streets.every((o) => o === own || segmentDistance(p, o.a, o.b) > o.width / 2 + margin)
   const incident = new Map(network.map((p) => [p.id, []]))
   for (const s of streets) {
     incident.get(s.from).push({ street: s, out: s.dir.clone() })
@@ -807,8 +810,10 @@ export function createCity(network, route) {
     // Mobiliario: postes de luz y canecas en la acera.
     for (const side of [1, -1]) {
       const n = rightOf(s.dir).multiplyScalar(side)
-      for (let along = CROSS + 2; along < s.len - CROSS; along += 13) {
-        const p = s.a.clone().addScaledVector(s.dir, along + (side > 0 ? 0 : 6)).addScaledVector(n, s.width / 2 + 0.45)
+      // El lado opuesto se corre media separación para alternar, sin pasar del final de la acera.
+      for (let along = CROSS + 2 + (side > 0 ? 0 : 6); along < s.len - CROSS; along += 13) {
+        const p = s.a.clone().addScaledVector(s.dir, along).addScaledVector(n, s.width / 2 + 0.45)
+        if (!offRoad(p, s)) continue
         const F = B.frame(p, n.clone().negate())
         F('cyl', 0x475569, 0, 2.6, 0, 0.16, 5.2, 0.16)
         F('box', 0x475569, 0, 5.15, 0.6, 0.1, 0.1, 1.3, false)
@@ -939,7 +944,7 @@ export function createCity(network, route) {
       for (let along = CROSS + 5; along < s.len - CROSS - 2; along += 8.5) {
         if (rand() < 0.35) continue
         const spot = s.a.clone().addScaledVector(s.dir, along).addScaledVector(n, s.width / 2 + WALK - 0.5)
-        if (occupied.some(([o, r]) => o.distanceTo(spot) < r + 0.8)) continue
+        if (occupied.some(([o, r]) => o.distanceTo(spot) < r + 0.8) || !offRoad(spot, s)) continue
         B.add('cyl', 0x8b7355, spot.x, 0.33, spot.z, 1.1, 0.06, 1.1, 0, false) // alcorque
         tree(B.frame(spot, new THREE.Vector3(0, 0, 1)), 0, 0, rand, 0.65)
       }
