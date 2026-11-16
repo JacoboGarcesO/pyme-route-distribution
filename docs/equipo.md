@@ -1,20 +1,22 @@
-# Equipo — Feature 3
+# Equipo — Feature 4
 
 ## Reparto de tareas
 
 | Integrante | Responsabilidad | Tareas |
 |---|---|---|
-| **Jose** | Decisiones importantes, verificación final, documentación, pitch y entrega | T04–T05, T19, T25–T33 |
-| **Jacobo** | Algoritmo y núcleo de ruta de menor costo | T08–T15 |
-| **Mariana** | Implementación operativa de API, interfaz y pruebas | T15–T18, T20, T23–T24 |
-| **Carolina** | Organización operativa, preparación de datos e integración visual | T01–T03, T06–T07, T21–T22 |
+| **Jose** | Decisiones, verificación final, evidencia, documentación, pitch y entrega | T04–T06, T10, T18–T23, T25–T27 |
+| **Jacobo** | Cambio de requisito en núcleo y API, datos del dibujo, aceptación normal | T07–T09, T11, T17 |
+| **Mariana** | Interfaz que muestra la red o el grafo | T13 |
+| **Carolina** | Organización, integración de la pantalla y resaltado de cobertura, ruta y errores | T01–T03, T12, T14–T16 |
+| **Todos** | Bitácora de IA propia y coevaluación | T24, T27 |
 
 ## Orden de ejecución
 
-1. Carolina prepara la rama, backlog, datos y componentes operativos de la interfaz.
-2. Jacobo implementa y prueba el algoritmo y el núcleo Python.
-3. Mariana implementa el endpoint, errores, consulta visual y pruebas iniciales.
-4. Jose toma las decisiones importantes y verifica el funcionamiento real de la API.
-5. Jose completa la evidencia, documentación y entrega de la feature.
+1. Carolina prepara la rama, el reparto y el backlog.
+2. Jose registra la solicitud de cambio, su impacto y las decisiones de F4.
+3. Jacobo implementa el cambio de requisito y expone los datos del dibujo en la API.
+4. Mariana crea la interfaz que dibuja la red o el grafo.
+5. Carolina integra la pantalla y resalta cobertura, ruta y errores sobre el dibujo.
+6. Jose verifica con la API y la interfaz reales y completa evidencia, documentación y entrega.
 
-La asignación detallada, los criterios de terminado y las dependencias están en [`docs/05-tareas-feature-3.md`](05-tareas-feature-3.md).
+La asignación detallada, los criterios de terminado y las dependencias están en [`docs/05-tareas-feature-4.md`](05-tareas-feature-4.md).
