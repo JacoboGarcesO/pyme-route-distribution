@@ -5,6 +5,7 @@
 
   let originId = $state('')
   let destinationId = $state('')
+  let viaId = $state('')
 
   // Los nombres pueden repetirse, así que cada opción muestra tipo y UUID corto.
   function optionLabel(point) {
@@ -13,7 +14,7 @@
 
   function submit(event) {
     event.preventDefault()
-    onSearch(originId, destinationId)
+    onSearch(originId, destinationId, viaId)
   }
 </script>
 
@@ -34,6 +35,15 @@
       Destino
       <select bind:value={destinationId} required>
         <option value="">Elige el punto de destino</option>
+        {#each points as point (point.id)}
+          <option value={point.id}>{optionLabel(point)}</option>
+        {/each}
+      </select>
+    </label>
+    <label>
+      Parada obligatoria (opcional)
+      <select bind:value={viaId}>
+        <option value="">Sin parada</option>
         {#each points as point (point.id)}
           <option value={point.id}>{optionLabel(point)}</option>
         {/each}

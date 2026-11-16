@@ -92,7 +92,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 - **Entregable:** `App.svelte` con las tres operaciones y un único refresco de datos.
 - **Hecho cuando:** crear un punto o conexión actualiza selectores, lista y dibujo sin recargar.
 
-### [ ] T13 · Crear la interfaz que muestra la red o el grafo (60 min) · **Mariana**
+### [x] T13 · Crear la interfaz que muestra la red o el grafo (60 min) · **Mariana**
 - **Entregable:** componente Svelte nuevo (por ejemplo `frontend/src/lib/NetworkGraph.svelte`) que dibuja los puntos y las conexiones dirigidas con su costo a partir de `GET /network`.
 - **Hecho cuando:** se distinguen conexiones de un solo sentido y de doble sentido, se ve el costo de cada una y la red vacía muestra un mensaje en lugar de un dibujo roto.
 

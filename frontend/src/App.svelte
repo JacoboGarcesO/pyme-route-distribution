@@ -3,6 +3,7 @@
   import BackendStatus from './lib/BackendStatus.svelte'
   import ConnectionForm from './lib/ConnectionForm.svelte'
   import CoverageView from './lib/CoverageView.svelte'
+  import NetworkGraph3D from './lib/NetworkGraph3D.svelte'
   import NetworkView from './lib/NetworkView.svelte'
   import PointForm from './lib/PointForm.svelte'
   import PointsList from './lib/PointsList.svelte'
@@ -15,6 +16,7 @@
   let network = $state([])
   let networkLoading = $state(true)
   let networkError = $state(null)
+  let route = $state(null)
 
   async function loadPoints() {
     pointsLoading = true
@@ -62,8 +64,8 @@
         </svg>
       </div>
       <div>
-        <strong>RutaPyme</strong>
-        <span>Despacho inteligente</span>
+        <strong>WareTrack</strong>
+        <span>Logística y despacho</span>
       </div>
     </div>
 
@@ -165,10 +167,11 @@
           <span class="group-index">03</span>
           <div>
             <h2>Ruta de menor costo</h2>
-            <p>Elige dos puntos y consulta el camino de menor distancia entre ellos.</p>
+            <p>Elige el punto A, el punto B y, si hace falta, una parada: el camión recorre la ruta en el mapa 3D.</p>
           </div>
         </div>
-        <RouteView {points} />
+        <RouteView {points} onResult={(result) => (route = result)} />
+        <NetworkGraph3D {network} {route} />
       </div>
 
       <div class="group">
@@ -188,6 +191,6 @@
       </div>
     </main>
 
-    <footer class="footer">RutaPyme · Plataforma de despacho y cobertura de entregas</footer>
+    <footer class="footer">WareTrack · Plataforma logística de despacho y cobertura de entregas</footer>
   </div>
 </div>
