@@ -10,6 +10,8 @@ Estados sugeridos: `[ ]` pendiente · `[~]` en curso · `[x]` hecha.
 
 El despachador registra una red pequeña, verifica cobertura, solicita una ruta, entiende por qué se seleccionó (viéndola en la red) y obtiene una respuesta correcta ante datos inválidos o falta de conexión. F4 también incorpora el cambio de requisito comunicado por el docente.
 
+**Cambio de requisito elegido por el equipo:** parada obligatoria. `GET /shortest-path` acepta `via=<id>` y la ruta debe pasar por ese punto (T04–T09, T20).
+
 F4 no incluye algoritmos nuevos fuera del cambio de requisito, tráfico en tiempo real ni más de una entrega por consulta. NetworkX, si se usa, solo dibuja datos ya calculados por el backend.
 
 ## Reparto asignado
@@ -61,15 +63,15 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 - **Entregable:** reglas y código de error para costo cero, negativo, no numérico y ausente, alineadas con `InvalidCost`.
 - **Hecho cuando:** cada caso tiene código HTTP, código de error y mensaje.
 
-### [ ] T07 · Implementar el cambio de requisito en el núcleo (60 min) · **Jacobo**
+### [x] T07 · Implementar el cambio de requisito en el núcleo (60 min) · **Jacobo**
 - **Entregable:** cambio en `backend/domain/` según T04–T05, sin romper F1–F3.
 - **Hecho cuando:** las verificaciones de consola de F2 y F3 siguen pasando.
 
-### [ ] T08 · Probar el cambio en consola (45 min) · **Jacobo**
+### [x] T08 · Probar el cambio en consola (45 min) · **Jacobo**
 - **Entregable:** casos normal y borde del cambio en un script `backend/verify_*.py`.
 - **Hecho cuando:** imprime esperado, obtenido y PASÓ/FALLÓ.
 
-### [ ] T09 · Adaptar contrato y endpoint (60 min) · **Jacobo**
+### [x] T09 · Adaptar contrato y endpoint (60 min) · **Jacobo**
 - **Entregable:** cambio en `backend/api/` y sección actualizada de `docs/api.md`.
 - **Hecho cuando:** la API real responde según el contrato nuevo.
 

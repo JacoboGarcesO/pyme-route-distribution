@@ -333,6 +333,7 @@ Parámetros de consulta:
 |---|---|---|
 | `origin` | Sí | UUID del punto de origen |
 | `destination` | Sí | UUID del punto de destino |
+| `via` | No | UUID de una parada obligatoria (cambio de requisito de F4, ver más abajo) |
 
 Que **no exista ruta no es un error**: es una respuesta válida de negocio (200 con `found: false`). Los errores son solo los de entrada: falta un parámetro o un punto no existe.
 
@@ -416,8 +417,38 @@ Todos siguen el formato de F1: `{"error": {"code", "message"}}`.
 | Falta `origin` o `destination` (ausente, vacío o solo espacios) | 400 | `MISSING_DATA` |
 | `origin` no existe, es UUID inválido, o la red está vacía | 404 | `ORIGIN_NOT_FOUND` |
 | `destination` no existe o es UUID inválido | 404 | `DESTINATION_NOT_FOUND` |
+| `via` no existe o es UUID inválido | 404 | `VIA_NOT_FOUND` |
 
-Los errores usan los códigos de F1; no se crea ninguno nuevo.
+Los errores usan los códigos de F1, salvo `VIA_NOT_FOUND` que agrega F4. Se validan en este orden: `origin`, `destination` y `via`.
+
+### Parada obligatoria: `via` (F4)
+
+Con `via`, la ruta debe pasar por ese punto. Es la ruta de menor costo entre las que pasan por la parada: la mejor de origen a parada más la mejor de parada a destino (dos Dijkstra encadenados), y `total_cost_km` es la suma exacta de ambas.
+
+Entrada: `GET /shortest-path?origin=3f2b8c1e-...&destination=c7e1f0b3-...&via=e2a4b6c8-...`
+
+```json
+{
+  "origin_id": "3f2b8c1e-...",
+  "destination_id": "c7e1f0b3-...",
+  "via_id": "e2a4b6c8-...",
+  "found": true,
+  "path": [ "Bodega", "Taller", "Casa A" ],
+  "connections": [ { "origin_id": "3f2b8c1e-...", "destination_id": "e2a4b6c8-...", "cost_km": "1" }, { "origin_id": "e2a4b6c8-...", "destination_id": "c7e1f0b3-...", "cost_km": "10" } ],
+  "total_cost_km": "11"
+}
+```
+
+(`path` se abrevia aquí con nombres; la API devuelve los objetos punto de siempre.)
+
+| Caso | Resultado |
+|---|---|
+| `via` ya está en la mejor ruta | La misma ruta que sin `via` |
+| `via` igual al origen o al destino | La ruta normal |
+| `via` fuera de la mejor ruta | La ruta con el desvío obligado, de mayor costo |
+| La parada obliga a volver sobre un punto | Se permite: el punto aparece dos veces en `path` |
+| No hay camino origen→`via` o `via`→destino | 200, `found: false`, `reason` con el tramo que falla |
+| Sin `via` | Idéntico a F3; `via_id` no aparece |
 
 ### Orden de validación
 

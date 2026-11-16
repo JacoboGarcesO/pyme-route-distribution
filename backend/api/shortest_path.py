@@ -12,5 +12,6 @@ shortest_path_bp = Blueprint("shortest_path", __name__)
 def get_shortest_path():
     origin_id = query_arg("origin", required=True)
     destination_id = query_arg("destination", required=True)
+    via_id = query_arg("via")  # opcional: parada obligatoria (F4)
     graph = current_app.extensions["graph"]
-    return shortest_path(graph, origin_id, destination_id).to_dict()
+    return shortest_path(graph, origin_id, destination_id, via_id).to_dict()

@@ -54,6 +54,10 @@ class DestinationNotFound(GraphError):
     """C3: el UUID de destino es inválido o no existe."""
 
 
+class ViaNotFound(GraphError):
+    """F4: el UUID de la parada obligatoria es inválido o no existe."""
+
+
 class PointNotFound(GraphError):
     """El punto consultado no existe (vecinos; reservado para F2 y F3)."""
 

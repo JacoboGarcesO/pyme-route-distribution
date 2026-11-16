@@ -14,6 +14,7 @@ from werkzeug.exceptions import HTTPException
 from domain.errors import (
     CostPrecision,
     DestinationNotFound,
+    ViaNotFound,
     DuplicateConnection,
     GraphError,
     InconsistentCost,
@@ -40,6 +41,7 @@ HTTP_ERRORS = {
     CostPrecision: (422, "COST_PRECISION"),
     OriginNotFound: (404, "ORIGIN_NOT_FOUND"),
     DestinationNotFound: (404, "DESTINATION_NOT_FOUND"),
+    ViaNotFound: (404, "VIA_NOT_FOUND"),
     PointNotFound: (404, "POINT_NOT_FOUND"),
     DuplicateConnection: (409, "DUPLICATE_CONNECTION"),
     InconsistentCost: (409, "INCONSISTENT_COST"),
