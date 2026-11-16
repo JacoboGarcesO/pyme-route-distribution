@@ -14,7 +14,7 @@ from seed import seed_network
 app = Flask(__name__)
 graph = Graph()
 if os.environ.get("SEED_NETWORK") == "1":
-    seed_network(graph)
+    seed_network(graph, city=True)  # F1 map plus the WareTrack city of F4
 app.extensions["graph"] = graph
 register_error_handlers(app)
 app.register_blueprint(points_bp)

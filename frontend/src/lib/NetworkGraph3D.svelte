@@ -17,6 +17,8 @@
     }
     city = createCity(network, route)
     stage.scene.add(city.group)
+    stage.camera.position.set(city.radius * 0.7, city.radius * 1.15, city.radius * 1.5)
+    stage.controls.target.set(0, 0, 0)
     truck.visible = !!city.timeline
     startTime = now
   }

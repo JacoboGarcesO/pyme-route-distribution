@@ -11,26 +11,72 @@ const ORANGE = 0xf97316
 const ASPHALT = 0xb9c1cf
 const SIDEWALK = 0xe3e7ef
 const WHITE = 0xffffff
+const TRUNK = 0x8b6b4a
 const WALK = 2.2 // ancho de la acera
 const CROSS = 6 // ancho que ocupa el cruce de una calle
 const LOT = 7 // fondo de un lote
+// Zona nítida alrededor del punto de vista: 3 x 3 manzanas.
+export const FOCUS_HALF = SCALE * 1.5
 // Recorrido del camión: unidades por segundo y pausas en A, en la parada y en B.
 const SPEED = 10
 const LOAD = 2
 const STOP = 2.2
 const END = 2.5
 
-const WALLS = [0xffffff, 0xfdf6e3, 0xfde2cf, 0xe0ecff, 0xe5e7eb, 0xf5e1c8, 0xe8f5e9]
+const WALLS = [0xffffff, 0xfdf6e3, 0xfde2cf, 0xe0ecff, 0xe5e7eb, 0xf5e1c8, 0xe8f5e9, 0xfce7f3]
 const ROOFS = [0xb45309, 0x64748b, 0xd9603b, 0x8b5a3c, 0x9ca3af] // sin azul: el techo azul es del cliente
-const GREENS = [0x7fd49a, 0x6cc58a, 0x94dca8]
-const SHIRTS = [0xef4444, 0x2563eb, 0xf59e0b, 0x10b981, 0x8b5cf6, 0xec4899, 0x0ea5e9]
+const DOORS = [0x7c4a2d, 0x14532d, 0x7f1d1d, 0x1e3a5f, 0x374151]
+const GREENS = [0x6cc58a, 0x5bb37a, 0x7fd49a, 0x4f9f6a]
+const SHIRTS = [0xef4444, 0x2563eb, 0xf59e0b, 0x10b981, 0x8b5cf6, 0xec4899, 0x0ea5e9, 0xffffff]
+const pick = (rand, list) => list[Math.floor(rand() * list.length)]
 
-export function createStage(container) {
+// ---------- Escenario: cámara, luces y desenfoque fuera de foco ----------
+
+const blurShader = {
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tColor;
+    uniform sampler2D tDepth;
+    uniform mat4 projInv;
+    uniform mat4 viewInv;
+    uniform vec2 focus;
+    uniform float half_;
+    uniform vec2 texel;
+    varying vec2 vUv;
+    void main() {
+      vec4 base = texture2D(tColor, vUv);
+      float depth = texture2D(tDepth, vUv).x;
+      float amount = 1.0;
+      if (depth < 1.0) {
+        vec4 view = projInv * vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+        vec3 world = (viewInv * vec4(view.xyz / view.w, 1.0)).xyz;
+        vec2 d = abs(world.xz - focus);
+        amount = smoothstep(half_, half_ + 14.0, max(d.x, d.y));
+      }
+      vec4 color = base;
+      if (amount > 0.0) {
+        vec4 sum = vec4(0.0);
+        for (int i = 0; i < 24; i++) {
+          float a = float(i) * 2.39996;
+          float r = sqrt((float(i) + 0.5) / 24.0) * 9.0 * amount;
+          sum += texture2D(tColor, vUv + vec2(cos(a), sin(a)) * r * texel);
+        }
+        vec4 blurred = sum / 24.0;
+        float gray = dot(blurred.rgb, vec3(0.299, 0.587, 0.114));
+        blurred.rgb = mix(blurred.rgb, vec3(gray), 0.3 * amount);
+        color = mix(base, blurred, amount);
+      }
+      gl_FragColor = color;
+      #include <colorspace_fragment>
+    }`,
+}
+
+export function createStage(container, { focusBlur = false } = {}) {
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0xeef2f8)
-  scene.fog = new THREE.Fog(0xeef2f8, 170, 380)
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 900)
-  camera.position.set(55, 85, 115)
+  scene.fog = new THREE.Fog(0xeef2f8, 260, 560)
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 1200)
+  camera.position.set(90, 130, 170)
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.shadowMap.enabled = true
@@ -41,21 +87,44 @@ export function createStage(container) {
   controls.enableDamping = true
   controls.maxPolarAngle = Math.PI / 2.3
   controls.minDistance = 8
-  controls.maxDistance = 260
+  controls.maxDistance = 360
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c4dc, 1.8))
   const sun = new THREE.DirectionalLight(0xffffff, 1.5)
-  sun.position.set(40, 90, 30)
   sun.castShadow = true
-  Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, far: 320 })
-  sun.shadow.mapSize.set(2048, 2048)
+  Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, far: 400 })
+  sun.shadow.mapSize.set(4096, 4096)
   sun.shadow.bias = -0.0005
-  scene.add(sun)
+  scene.add(sun, sun.target)
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0xeef1f6 }))
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshStandardMaterial({ color: 0xeef1f6 }))
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   scene.add(ground)
+
+  // Con focusBlur se pinta primero en una textura y un pase final desenfoca
+  // todo lo que queda fuera de las 3 x 3 manzanas alrededor de la mira.
+  let target = null
+  let post = null
+  if (focusBlur) {
+    target = new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(1, 1) })
+    const material = new THREE.ShaderMaterial({
+      ...blurShader,
+      uniforms: {
+        tColor: { value: target.texture },
+        tDepth: { value: target.depthTexture },
+        projInv: { value: camera.projectionMatrixInverse },
+        viewInv: { value: camera.matrixWorld },
+        focus: { value: new THREE.Vector2() },
+        half_: { value: FOCUS_HALF },
+        texel: { value: new THREE.Vector2() },
+      },
+      depthTest: false,
+      depthWrite: false,
+    })
+    post = { scene: new THREE.Scene(), camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), material }
+    post.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material))
+  }
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = container
@@ -63,6 +132,11 @@ export function createStage(container) {
     renderer.setSize(w, h)
     camera.aspect = w / h
     camera.updateProjectionMatrix()
+    if (target) {
+      const ratio = renderer.getPixelRatio()
+      target.setSize(w * ratio, h * ratio)
+      post.material.uniforms.texel.value.set(1 / (w * ratio), 1 / (h * ratio))
+    }
   }
   const observer = new ResizeObserver(resize)
   observer.observe(container)
@@ -80,7 +154,19 @@ export function createStage(container) {
         const dt = Math.min(clock.getDelta(), 0.1)
         tick(clock.elapsedTime, dt)
         controls.update()
-        renderer.render(scene, camera)
+        // La sombra sigue a la mira para que la zona visible siempre la tenga.
+        const focus = controls.target
+        sun.target.position.set(focus.x, 0, focus.z)
+        sun.position.set(focus.x + 50, 110, focus.z + 40)
+        if (post) {
+          post.material.uniforms.focus.value.set(focus.x, focus.z)
+          renderer.setRenderTarget(target)
+          renderer.render(scene, camera)
+          renderer.setRenderTarget(null)
+          renderer.render(post.scene, post.camera)
+        } else {
+          renderer.render(scene, camera)
+        }
       }
       loop()
     },
@@ -89,6 +175,8 @@ export function createStage(container) {
       observer.disconnect()
       controls.dispose()
       disposeObject(scene)
+      target?.dispose()
+      post?.material.dispose()
       renderer.dispose()
       renderer.domElement.remove()
     },
@@ -103,6 +191,8 @@ export function disposeObject(object) {
     if (o.isInstancedMesh) o.dispose()
   })
 }
+
+// ---------- Utilidades ----------
 
 // Aleatorio determinista: la misma red siempre da la misma ciudad.
 function seeded(seed) {
@@ -122,6 +212,8 @@ function segmentDistance(p, a, b) {
 
 // Lado derecho de quien avanza en la dirección d (vista desde arriba, y hacia arriba).
 const rightOf = (d) => new THREE.Vector3(-d.z, 0, d.x)
+// Giro que lleva el eje +x local a la dirección d (placas y textos).
+const yawX = (d) => Math.atan2(-d.z, d.x)
 
 // Las piezas repetidas (cajas, conos, esferas...) se dibujan en pocas InstancedMesh.
 function makeBatcher() {
@@ -129,34 +221,35 @@ function makeBatcher() {
   const geometries = {
     box: () => new THREE.BoxGeometry(1, 1, 1),
     roof: () => new THREE.ConeGeometry(Math.SQRT1_2, 1, 4).rotateY(Math.PI / 4),
-    sphere: () => new THREE.SphereGeometry(0.5, 12, 9),
-    cyl: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 10),
+    sphere: () => new THREE.IcosahedronGeometry(0.5, 2),
+    cyl: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
+    cone: () => new THREE.ConeGeometry(0.5, 1, 10),
     tri: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 3),
   }
-  const add = (kind, color, x, y, z, sx, sy, sz, ry = 0, shadow = true) => {
+  const add = (kind, color, x, y, z, sx, sy, sz, ry = 0, shadow = true, rx = 0, rz = 0) => {
     const key = `${kind}:${shadow}`
     if (!items.has(key)) items.set(key, [])
-    items.get(key).push([color, x, y, z, sx, sy, sz, ry])
+    items.get(key).push([color, x, y, z, sx, sy, sz, rx, ry, rz])
   }
-  // Marco local de un lote: +z mira hacia `front`, +x a lo ancho.
+  // Marco local: +z mira hacia `front`, +x a lo ancho. `yaw` gira la pieza dentro del marco.
   const frame = (origin, front) => {
     const r = new THREE.Vector3(front.z, 0, -front.x)
-    const ry = Math.atan2(front.x, front.z)
-    return (kind, color, lx, y, lz, sx, sy, sz, shadow = true) =>
-      add(kind, color, origin.x + r.x * lx + front.x * lz, y, origin.z + r.z * lx + front.z * lz, sx, sy, sz, ry, shadow)
+    const base = Math.atan2(front.x, front.z)
+    return (kind, color, lx, y, lz, sx, sy, sz, shadow = true, { yaw = 0, tilt = 0 } = {}) =>
+      add(kind, color, origin.x + r.x * lx + front.x * lz, y, origin.z + r.z * lx + front.z * lz, sx, sy, sz, base + yaw, shadow, tilt)
   }
   const build = (group) => {
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
-    const up = new THREE.Vector3(0, 1, 0)
+    const e = new THREE.Euler(0, 0, 0, 'YXZ')
     const p = new THREE.Vector3()
     const s = new THREE.Vector3()
     const c = new THREE.Color()
     for (const [key, list] of items) {
       const [kind, shadow] = key.split(':')
       const mesh = new THREE.InstancedMesh(geometries[kind](), new THREE.MeshStandardMaterial({ roughness: 0.8 }), list.length)
-      list.forEach(([color, x, y, z, sx, sy, sz, ry], i) => {
-        mesh.setMatrixAt(i, m.compose(p.set(x, y, z), q.setFromAxisAngle(up, ry), s.set(sx, sy, sz)))
+      list.forEach(([color, x, y, z, sx, sy, sz, rx, ry, rz], i) => {
+        mesh.setMatrixAt(i, m.compose(p.set(x, y, z), q.setFromEuler(e.set(rx, ry, rz)), s.set(sx, sy, sz)))
         mesh.setColorAt(i, c.set(color))
       })
       mesh.castShadow = shadow === 'true'
@@ -183,139 +276,337 @@ function positions(points) {
 }
 
 // "Calle 11 con Carrera 6" y "Calle 11 con Carrera 7" comparten la "Calle 11".
+const parts = (name) => name.split(/\s+con\s+/i)
 function sharedStreet(nameA, nameB) {
-  const a = nameA.split(/\s+con\s+/i)
-  const b = nameB.split(/\s+con\s+/i)
-  return a.find((part) => b.includes(part)) ?? null
+  const b = parts(nameB)
+  return parts(nameA).find((part) => b.includes(part)) ?? null
 }
 
 function crossNumber(cornerName, street) {
-  const other = cornerName.split(/\s+con\s+/i).find((part) => part !== street)
-  return other?.match(/\d+/)?.[0] ?? null
+  return parts(cornerName).find((part) => part !== street)?.match(/\d+/)?.[0] ?? null
 }
 
-function label(text, { color = '#0f172a', bg = 'rgba(255,255,255,0.95)', size = 26 } = {}) {
+function canvasTexture(width, height, draw) {
   const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  const font = `700 ${size}px Plus Jakarta Sans, system-ui, sans-serif`
-  ctx.font = font
-  canvas.width = Math.ceil(ctx.measureText(text).width) + 24
-  canvas.height = size + 18
-  ctx.font = font
-  ctx.fillStyle = bg
-  ctx.beginPath()
-  ctx.roundRect(0, 0, canvas.width, canvas.height, 10)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.textBaseline = 'middle'
-  ctx.fillText(text, 12, canvas.height / 2 + 1)
+  canvas.width = width
+  canvas.height = height
+  draw(canvas.getContext('2d'))
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false }))
-  sprite.scale.set(canvas.width / 48, canvas.height / 48, 1)
-  sprite.renderOrder = 10
-  return sprite
+  texture.anisotropy = 4
+  return texture
+}
+
+function textWidth(text, font) {
+  const ctx = document.createElement('canvas').getContext('2d')
+  ctx.font = font
+  return ctx.measureText(text).width
+}
+
+// Placa de dos caras (cada cara se lee de frente). +x local = a lo largo de la placa.
+function plate(texture, width, height) {
+  const g = new THREE.Group()
+  const mat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5 })
+  for (const turn of [0, Math.PI]) {
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat)
+    face.rotation.y = turn
+    face.position.z = turn ? -0.015 : 0.015
+    g.add(face)
+  }
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(width + 0.06, height + 0.06, 0.02), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 }))
+  g.add(edge)
+  return g
+}
+
+// Placa de nomenclatura verde (como las de las esquinas de la ciudad).
+function streetSignTexture(name) {
+  const font = '800 44px Plus Jakarta Sans, system-ui, sans-serif'
+  const width = Math.ceil(textWidth(name, font)) + 60
+  return [
+    canvasTexture(width, 72, (ctx) => {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, width, 72)
+      ctx.fillStyle = '#0b6b3a'
+      ctx.fillRect(4, 4, width - 8, 64)
+      ctx.fillStyle = '#ffffff'
+      ctx.font = font
+      ctx.textBaseline = 'middle'
+      ctx.fillText(name, 30, 38)
+    }),
+    width / 72,
+  ]
 }
 
 // Señal reglamentaria de sentido único: rectángulo negro, flecha y "UNA VÍA" en blanco.
 function oneWayTexture(pointsRight) {
-  const canvas = document.createElement('canvas')
-  canvas.width = 256
-  canvas.height = 96
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, 256, 96)
-  ctx.fillStyle = '#111111'
-  ctx.fillRect(5, 5, 246, 86)
-  ctx.save()
-  if (!pointsRight) {
-    ctx.translate(256, 0)
-    ctx.scale(-1, 1)
+  return canvasTexture(256, 96, (ctx) => {
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 256, 96)
+    ctx.fillStyle = '#111111'
+    ctx.fillRect(5, 5, 246, 86)
+    ctx.save()
+    if (!pointsRight) {
+      ctx.translate(256, 0)
+      ctx.scale(-1, 1)
+    }
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(22, 38)
+    ctx.lineTo(176, 38)
+    ctx.lineTo(176, 18)
+    ctx.lineTo(234, 48)
+    ctx.lineTo(176, 78)
+    ctx.lineTo(176, 58)
+    ctx.lineTo(22, 58)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+    ctx.fillStyle = '#111111'
+    ctx.font = '800 17px system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('UNA VÍA', pointsRight ? 104 : 152, 49)
+  })
+}
+
+// Letrero de un cliente o de la bodega: nombre arriba y dato pequeño abajo.
+function boardTexture(title, subtitle, bg) {
+  const titleFont = '800 40px Plus Jakarta Sans, system-ui, sans-serif'
+  const subFont = '600 26px Plus Jakarta Sans, system-ui, sans-serif'
+  const width = Math.ceil(Math.max(textWidth(title, titleFont), subtitle ? textWidth(subtitle, subFont) : 0)) + 48
+  const height = subtitle ? 108 : 70
+  return [
+    canvasTexture(width, height, (ctx) => {
+      ctx.fillStyle = bg
+      ctx.beginPath()
+      ctx.roundRect(0, 0, width, height, 14)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.textBaseline = 'middle'
+      ctx.font = titleFont
+      ctx.fillText(title, 24, 38)
+      if (subtitle) {
+        ctx.font = subFont
+        ctx.globalAlpha = 0.85
+        ctx.fillText(subtitle, 24, 80)
+      }
+    }),
+    width / height,
+  ]
+}
+
+// Texto pintado sobre el asfalto (costo de la conexión).
+function paintTexture(text) {
+  return canvasTexture(256, 96, (ctx) => {
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'
+    ctx.font = '800 64px Plus Jakarta Sans, system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(text, 128, 52)
+  })
+}
+
+function pinLabel(text, color) {
+  const [texture, ratio] = boardTexture(text, null, `#${color.toString(16).padStart(6, '0')}`)
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }))
+  sprite.scale.set(1.4 * ratio, 1.4, 1)
+  return sprite
+}
+
+// ---------- Árboles: frondoso, pino, guayacán, palma y arbusto ----------
+
+function tree(L, lx, lz, rand, s = 1) {
+  const kind = rand()
+  if (kind < 0.32) {
+    const g = pick(rand, GREENS)
+    L('cyl', TRUNK, lx, 1.1 * s, lz, 0.42 * s, 2.2 * s, 0.42 * s)
+    L('sphere', g, lx, 3 * s, lz, 2.7 * s, 2.4 * s, 2.7 * s)
+    L('sphere', pick(rand, GREENS), lx + 0.8 * s, 2.6 * s, lz + 0.3 * s, 1.9 * s, 1.7 * s, 1.9 * s)
+    L('sphere', pick(rand, GREENS), lx - 0.7 * s, 2.7 * s, lz - 0.5 * s, 2 * s, 1.8 * s, 2 * s)
+    L('sphere', g, lx + 0.1 * s, 3.9 * s, lz - 0.1 * s, 1.7 * s, 1.5 * s, 1.7 * s)
+  } else if (kind < 0.52) {
+    L('cyl', 0x6b4f37, lx, 0.7 * s, lz, 0.32 * s, 1.4 * s, 0.32 * s)
+    L('cone', 0x2f7d4f, lx, 2.1 * s, lz, 3 * s, 2.4 * s, 3 * s)
+    L('cone', 0x37905b, lx, 3.3 * s, lz, 2.3 * s, 2.1 * s, 2.3 * s)
+    L('cone', 0x3fa266, lx, 4.4 * s, lz, 1.5 * s, 1.8 * s, 1.5 * s)
+  } else if (kind < 0.66) {
+    // Guayacán florecido: amarillo o rosado.
+    const [a, b] = rand() < 0.5 ? [0xfacc15, 0xfde047] : [0xf472b6, 0xf9a8d4]
+    L('cyl', TRUNK, lx, 1.2 * s, lz, 0.36 * s, 2.4 * s, 0.36 * s)
+    L('sphere', a, lx, 3.1 * s, lz, 3 * s, 1.8 * s, 3 * s)
+    L('sphere', b, lx + 0.7 * s, 3.6 * s, lz - 0.4 * s, 2 * s, 1.3 * s, 2 * s)
+    L('sphere', b, lx - 0.8 * s, 3.4 * s, lz + 0.4 * s, 1.8 * s, 1.2 * s, 1.8 * s)
+  } else if (kind < 0.8) {
+    // Palma: tronco alto y hojas caídas alrededor.
+    const top = 5 * s
+    L('cyl', 0xa1845c, lx, top / 2, lz, 0.32 * s, top, 0.32 * s)
+    L('sphere', 0x8b6b4a, lx, top, lz, 0.6 * s, 0.5 * s, 0.6 * s)
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2
+      L('box', i % 2 ? 0x4ade80 : 0x22c55e, lx + Math.sin(a) * 1.1 * s, top - 0.15 * s, lz + Math.cos(a) * 1.1 * s, 0.55 * s, 0.08 * s, 2.6 * s, true, { yaw: a, tilt: 0.45 })
+    }
+  } else {
+    // Arbusto bajo.
+    for (const [dx, dz, r] of [[0, 0, 1.6], [0.8, 0.3, 1.2], [-0.7, -0.2, 1.3]]) {
+      L('sphere', pick(rand, GREENS), lx + dx * s, 0.6 * s, lz + dz * s, r * s, r * 0.8 * s, r * s)
+    }
   }
-  ctx.fillStyle = '#ffffff'
-  ctx.beginPath()
-  ctx.moveTo(22, 38)
-  ctx.lineTo(176, 38)
-  ctx.lineTo(176, 18)
-  ctx.lineTo(234, 48)
-  ctx.lineTo(176, 78)
-  ctx.lineTo(176, 58)
-  ctx.lineTo(22, 58)
-  ctx.closePath()
-  ctx.fill()
-  ctx.restore()
-  ctx.fillStyle = '#111111'
-  ctx.font = '800 17px system-ui, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('UNA VÍA', pointsRight ? 104 : 152, 49)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  return texture
 }
 
 // ---------- Edificaciones (marco local: el frente mira a +z, hacia la calle) ----------
 
-function house(L, wall, roof) {
-  L('box', wall, 0, 1.5, 0, 5, 3, 5)
-  L('roof', roof, 0, 3.9, 0, 5.8, 1.8, 5.8)
-  L('box', 0x7c4a2d, 0, 0.9, 2.52, 1, 1.8, 0.1, false)
-  L('box', 0x9cc3f0, -1.6, 1.8, 2.52, 0.9, 0.8, 0.1, false)
-  L('box', 0x9cc3f0, 1.6, 1.8, 2.52, 0.9, 0.8, 0.1, false)
+function windowAt(L, x, y, z, w = 0.9, h = 0.8) {
+  L('box', WHITE, x, y, z, w + 0.25, h + 0.25, 0.05, false)
+  L('box', 0x9cc3f0, x, y, z + 0.03, w, h, 0.05, false)
+  L('box', WHITE, x, y, z + 0.06, 0.06, h, 0.03, false)
+  L('box', WHITE, x, y - h / 2 - 0.12, z + 0.1, w + 0.35, 0.08, 0.22, false)
 }
 
-function townhouse(L, wall) {
-  L('box', wall, 0, 2.8, 0, 5.4, 5.6, 5.4)
-  L('box', 0xcbd5e1, 0, 5.72, 0, 5.6, 0.25, 5.6)
-  for (const y of [1.6, 4.2]) {
-    for (const x of [-1.5, 1.5]) L('box', 0x9cc3f0, x, y, 2.72, 1, 1, 0.1, false)
+function frontYard(L, rand) {
+  L('box', 0xd6d3d1, 0, 0.06, 3, 1.2, 0.08, 1, false) // caminito
+  if (rand() < 0.6) {
+    for (const x of [-1.9, 1.9]) L('box', 0x4d9e63, x, 0.45, 3.2, 2.2, 0.9, 0.55)
+    L('sphere', 0xf472b6, -2.6, 0.95, 3.2, 0.4, 0.3, 0.4, false)
+    L('sphere', 0xfacc15, 2.4, 0.95, 3.2, 0.4, 0.3, 0.4, false)
+  } else {
+    for (const y of [0.45, 0.85]) {
+      for (const x of [-1.9, 1.9]) L('box', WHITE, x, y, 3.3, 2.2, 0.08, 0.06, false)
+    }
+    for (const x of [-2.9, -0.9, 0.9, 2.9]) L('box', WHITE, x, 0.5, 3.3, 0.12, 1, 0.12)
   }
-  L('box', 0x334155, 0, 0.9, 2.72, 0.9, 1.8, 0.1, false)
+}
+
+function house(L, rand, wall, roof) {
+  L('box', 0xd6d3d1, 0, 0.15, 0, 5.4, 0.3, 5.4)
+  L('box', wall, 0, 1.65, 0, 5, 3, 5)
+  L('roof', roof, 0, 4.05, 0, 5.9, 1.8, 5.9)
+  L('box', 0x9a3412, 1.4, 4.5, -0.8, 0.6, 1.5, 0.6)
+  L('box', WHITE, 0, 1.15, 2.52, 1.3, 2.1, 0.05, false)
+  L('box', pick(rand, DOORS), 0, 1.1, 2.56, 1, 1.85, 0.05, false)
+  L('sphere', 0xfacc15, 0.35, 1.1, 2.62, 0.1, 0.1, 0.1, false)
+  L('box', 0xd6d3d1, 0, 0.2, 2.85, 1.6, 0.2, 0.6, false)
+  windowAt(L, -1.6, 1.95, 2.52)
+  windowAt(L, 1.6, 1.95, 2.52)
+  L('box', 0x9cc3f0, 2.53, 1.95, 0, 0.05, 0.8, 1, false)
+  L('box', 0x9cc3f0, -2.53, 1.95, 0, 0.05, 0.8, 1, false)
+  frontYard(L, rand)
+}
+
+function townhouse(L, rand, wall) {
+  L('box', 0xd6d3d1, 0, 0.15, 0, 5.6, 0.3, 5.6)
+  L('box', wall, 0, 2.95, 0, 5.4, 5.6, 5.4)
+  L('box', 0xcbd5e1, 0, 5.85, 0, 5.7, 0.3, 5.7)
+  L('cyl', 0x1e3a5f, -1.4, 6.5, -1.4, 1.1, 1.1, 1.1) // tanque de agua
+  for (const x of [-1.5, 1.5]) windowAt(L, x, 1.9, 2.72)
+  windowAt(L, -1.5, 4.4, 2.72)
+  // Balcón con baranda en el segundo piso.
+  L('box', 0x334155, 1.3, 3.6, 3.3, 2.4, 0.15, 1.2)
+  L('box', 0x334155, 1.3, 4.05, 3.85, 2.4, 0.06, 0.06, false)
+  for (const x of [0.2, 0.8, 1.4, 2, 2.4]) L('box', 0x334155, x, 3.8, 3.85, 0.05, 0.5, 0.05, false)
+  L('box', 0x9cc3f0, 1.3, 4.5, 2.73, 1.2, 1.6, 0.05, false)
+  L('box', pick(rand, DOORS), 0, 1.05, 2.74, 1, 1.9, 0.05, false)
+  L('box', 0x475569, 0, 2.2, 3.1, 1.6, 0.12, 0.8) // alero de la puerta
+  L('box', 0xe5e7eb, 2.85, 2.4, -1, 0.5, 0.6, 0.9) // aire acondicionado
+  frontYard(L, rand)
 }
 
 function apartment(L, rand) {
-  const floors = 3 + Math.floor(rand() * 2)
-  const h = floors * 2.6
-  L('box', [0xf1f5f9, 0xe2e8f0, 0xdbeafe, 0xfef3c7][Math.floor(rand() * 4)], 0, h / 2, 0, 5.8, h, 5.8)
-  for (let f = 0; f < floors; f++) L('box', 0x93c5fd, 0, 1.5 + f * 2.6, 2.93, 4.8, 0.9, 0.08, false)
-  L('box', 0x94a3b8, 1.3, h + 0.5, -1.2, 1.6, 1, 1.6)
-  L('box', 0x475569, 0, 0.1 + h, 0, 5.9, 0.2, 5.9, false)
+  const floors = 3 + Math.floor(rand() * 3)
+  const h = floors * 2.7
+  const wall = pick(rand, [0xf1f5f9, 0xe2e8f0, 0xdbeafe, 0xfef3c7, 0xfde2cf])
+  L('box', 0x94a3b8, 0, 0.3, 0, 6.1, 0.6, 6.1)
+  L('box', wall, 0, h / 2, 0, 5.8, h, 5.8)
+  for (const x of [-2.9, 2.9]) L('box', 0xcbd5e1, x, h / 2, 2.9, 0.3, h, 0.3, false) // columnas
+  for (let f = 0; f < floors; f++) {
+    const y = 1.6 + f * 2.7
+    L('box', 0x93c5fd, 0, y, 2.93, 4.8, 1, 0.08, false)
+    L('box', 0xcbd5e1, 0, y - 0.65, 2.95, 5.6, 0.12, 0.12, false)
+    if (f > 0 && (f + Math.floor(rand() * 2)) % 2) {
+      L('box', 0x64748b, -1.3, y - 0.8, 3.4, 2, 0.12, 1)
+      L('box', 0x94a3b8, -1.3, y - 0.45, 3.88, 2, 0.6, 0.05, false)
+    }
+    L('box', 0x93c5fd, 2.93, y, 0, 0.08, 1, 4, false)
+  }
+  L('box', 0x334155, 0, 2.2, 3.4, 2.2, 0.15, 1.2) // marquesina de la entrada
+  L('box', 0x1e293b, 0, 1, 2.95, 1.6, 2, 0.06, false)
+  L('box', 0x475569, 0, h + 0.15, 0, 6, 0.3, 6)
+  L('cyl', 0x1e3a5f, 1.4, h + 1, -1.3, 1.4, 1.4, 1.4)
+  L('cyl', 0x94a3b8, -1.8, h + 1.4, -1.8, 0.06, 2.4, 0.06)
 }
 
 function shop(L, rand) {
-  L('box', WALLS[Math.floor(rand() * WALLS.length)], 0, 1.8, 0, 5.8, 3.6, 5)
-  L('box', 0xbfdbfe, 0, 1.2, 2.52, 4.6, 1.6, 0.08, false)
-  L('box', [0xef4444, 0x2563eb, 0x10b981, 0xf59e0b][Math.floor(rand() * 4)], 0, 2.6, 3.05, 5.8, 0.22, 1.2)
-  L('box', 0x1e293b, 0, 3.25, 2.56, 3, 0.55, 0.1, false)
-}
-
-function tree(L, lx, lz, rand, s = 1) {
-  L('cyl', 0x8b6b4a, lx, 0.8 * s, lz, 0.35 * s, 1.6 * s, 0.35 * s)
-  L('sphere', GREENS[Math.floor(rand() * GREENS.length)], lx, 2.6 * s, lz, 2.8 * s, 3.2 * s, 2.8 * s)
+  const wall = pick(rand, WALLS)
+  const awning = pick(rand, [0xef4444, 0x2563eb, 0x10b981, 0xf59e0b, 0x8b5cf6])
+  L('box', 0xd6d3d1, 0, 0.15, 0, 6, 0.3, 5.2)
+  L('box', wall, 0, 2, 0, 5.8, 3.7, 5)
+  L('box', 0x334155, 0, 1.35, 2.5, 4.9, 2.1, 0.06, false)
+  L('box', 0xbfdbfe, -0.6, 1.35, 2.54, 3.4, 1.8, 0.05, false)
+  L('box', 0x475569, 1.7, 1.2, 2.54, 0.9, 1.9, 0.05, false)
+  // Toldo a rayas.
+  for (let i = 0; i < 6; i++) {
+    L('box', i % 2 ? WHITE : awning, -2.42 + i * 0.97, 2.75, 3.05, 0.97, 0.18, 1.3, true, { tilt: 0.25 })
+  }
+  L('box', awning, 0, 3.45, 2.56, 3.6, 0.6, 0.08, false)
+  L('box', WHITE, 0, 3.45, 2.61, 2.6, 0.18, 0.03, false)
+  L('box', 0x92400e, -2.3, 0.45, 3.1, 0.8, 0.6, 0.8) // matera
+  L('sphere', 0x4d9e63, -2.3, 1, 3.1, 0.9, 0.8, 0.9)
 }
 
 function park(L, rand) {
   L('box', 0x9ee6b0, 0, 0.1, 0, 6.4, 0.2, LOT - 0.2, false)
   L('box', 0xe7dcc8, 0, 0.22, 0, 1.2, 0.04, LOT - 0.2, false)
-  tree(L, -2, -1.8, rand)
-  tree(L, 2.2, 0.6, rand, 0.8)
-  tree(L, -1.9, 2, rand, 0.7)
-  L('box', 0x8b5e3c, 1.9, 0.55, -2.2, 1.6, 0.18, 0.6)
+  L('box', 0xe7dcc8, 0, 0.22, 0, 6.4, 0.04, 1.2, false)
+  // Fuente central.
+  L('cyl', 0xcbd5e1, 0, 0.35, 0, 2.2, 0.5, 2.2)
+  L('cyl', 0x7dd3fc, 0, 0.55, 0, 1.8, 0.1, 1.8, false)
+  L('cyl', 0xcbd5e1, 0, 1, 0, 0.3, 1.2, 0.3)
+  L('sphere', 0x7dd3fc, 0, 1.65, 0, 0.5, 0.4, 0.5, false)
+  // Bancas, faroles y flores.
+  for (const [x, z, yaw] of [[2.1, -1.6, 0], [-2.1, 1.6, Math.PI]]) {
+    L('box', 0x8b5e3c, x, 0.5, z, 1.6, 0.12, 0.5, true, { yaw })
+    L('box', 0x8b5e3c, x, 0.8, z + (yaw ? 0.25 : -0.25), 1.6, 0.4, 0.08, true, { yaw })
+    L('box', 0x334155, x, 0.25, z, 1.3, 0.5, 0.35, false, { yaw })
+  }
+  L('cyl', 0x334155, -2.6, 1.5, -2.8, 0.1, 3, 0.1)
+  L('sphere', 0xfff7cc, -2.6, 3.1, -2.8, 0.45, 0.45, 0.45, false)
+  for (const [x, z] of [[-2.4, -0.9], [2.4, 0.9]]) {
+    L('box', 0x92400e, x, 0.3, z, 1.2, 0.2, 0.8, false)
+    for (const dx of [-0.3, 0.3]) L('sphere', pick(rand, [0xf472b6, 0xfacc15, 0xef4444, 0xa78bfa]), x + dx, 0.55, z, 0.45, 0.35, 0.45, false)
+  }
+  tree(L, -2.2, -2.2, rand, 0.75)
+  tree(L, 2.3, 2.4, rand, 0.7)
 }
 
-function warehouseMesh() {
-  const g = new THREE.Group()
-  const part = (w, h, d, color, x, y, z) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.65 }))
-    mesh.position.set(x, y, z)
-    mesh.castShadow = mesh.receiveShadow = true
-    g.add(mesh)
+function warehouseMesh(B, site, front, name) {
+  // Marco: +z hacia la calle; las puertas de muelle miran a la calle.
+  const L = B.frame(site, front)
+  L('box', 0xd6dbe4, 0, 0.1, 1, 17, 0.2, 15, false) // patio de maniobras
+  L('box', WHITE, 0, 2.95, -1.5, 13, 5.5, 9)
+  L('box', 0xdbe3f0, 0, 5.95, -1.5, 13.4, 0.5, 9.4)
+  for (const x of [-4, 0, 4]) {
+    L('box', BLUE, x, 1.9, 3.02, 2.6, 3.2, 0.12, false)
+    for (let y = 0.6; y < 3.4; y += 0.45) L('box', 0x1d4ed8, x, y, 3.09, 2.6, 0.05, 0.03, false)
   }
-  part(16, 0.2, 14, 0xd6dbe4, 0, 0.1, -1) // patio de maniobras
-  part(13, 5.5, 9, 0xffffff, 0, 2.75, 1.5)
-  part(13.4, 0.5, 9.4, 0xdbe3f0, 0, 5.75, 1.5)
-  // Puertas de muelle azules hacia la calle (-z local).
-  for (const x of [-4, 0, 4]) part(2.6, 3.2, 0.2, BLUE, x, 1.6, -3.05)
+  L('box', 0x94a3b8, 0, 0.6, 3.7, 13, 1, 1.4) // andén de carga
+  for (const x of [-4.5, 0, 4.5]) L('box', 0x93c5fd, x, 6.3, -1.5, 2, 0.3, 6, false) // claraboyas
+  // Estibas con cajas en el patio.
+  for (const [x, z] of [[-6.5, 6], [-5, 6.4], [6, 6.2]]) {
+    L('box', 0xa16207, x, 0.25, z, 1.3, 0.2, 1.3)
+    L('box', 0xc8a26b, x, 0.75, z, 1.1, 0.8, 1.1)
+  }
+  // Reja lateral del patio.
+  for (const x of [-8.4, 8.4]) {
+    L('box', 0x94a3b8, x, 0.9, 1, 0.08, 1.8, 15, false)
+    for (let z = -6; z <= 8; z += 2) L('box', 0x64748b, x, 0.9, z, 0.15, 1.8, 0.15)
+  }
+  // Letrero en la fachada.
+  const [texture, ratio] = boardTexture(name, 'WareTrack · Centro de distribución', '#2563eb')
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * ratio, 1.6), new THREE.MeshStandardMaterial({ map: texture }))
+  sign.position.set(0, 4.7, 3.06)
+  const g = new THREE.Group()
+  g.add(sign)
+  g.position.copy(site)
+  g.rotation.y = Math.atan2(front.x, front.z)
   return g
 }
 
@@ -329,7 +620,7 @@ function pin(color, text) {
   const dot = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 8), new THREE.MeshBasicMaterial({ color: WHITE }))
   dot.position.z = 0.75
   g.add(head, tip, dot)
-  const tag = label(text, { color: '#ffffff', bg: `#${color.toString(16).padStart(6, '0')}`, size: 30 })
+  const tag = pinLabel(text, color)
   tag.position.y = 2.6
   g.add(tag)
   g.scale.setScalar(0.75)
@@ -339,36 +630,47 @@ function pin(color, text) {
 function pedestrian(rand) {
   const g = new THREE.Group()
   const mat = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.8 })
-  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.8, 0.3), mat(0x1e293b))
-  legs.position.y = 0.4
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.8, 10), mat(SHIRTS[Math.floor(rand() * SHIRTS.length)]))
+  const pants = mat(pick(rand, [0x1e293b, 0x1e3a8a, 0x44403c, 0x334155]))
+  const shirt = mat(pick(rand, SHIRTS))
+  const skin = mat(pick(rand, [0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69]))
+  const limb = (material, w, h, x, y) => {
+    const pivot = new THREE.Group()
+    pivot.position.set(x, y, 0)
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), material)
+    mesh.position.y = -h / 2
+    mesh.castShadow = true
+    pivot.add(mesh)
+    g.add(pivot)
+    return pivot
+  }
+  const legs = [limb(pants, 0.2, 0.8, -0.12, 0.8), limb(pants, 0.2, 0.8, 0.12, 0.8)]
+  const arms = [limb(shirt, 0.14, 0.7, -0.38, 1.52), limb(shirt, 0.14, 0.7, 0.38, 1.52)]
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.32), shirt)
   body.position.y = 1.2
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 9), mat([0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69][Math.floor(rand() * 4)]))
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 9), skin)
   head.position.y = 1.85
-  for (const m of [legs, body, head]) m.castShadow = true
-  g.add(legs, body, head)
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.235, 12, 9, 0, Math.PI * 2, 0, Math.PI / 2), mat(pick(rand, [0x1f2937, 0x78350f, 0xfbbf24, 0x44403c])))
+  hair.position.y = 1.88
+  for (const m of [body, head]) m.castShadow = true
+  g.add(body, head, hair)
+  g.userData.limbs = { legs, arms }
   return g
 }
 
 // Semáforo en la esquina, mirando hacia `facing` (los carros que llegan al cruce).
-function trafficLight(position, facing, phase, lamps, mats) {
-  const g = new THREE.Group()
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.2, 8), new THREE.MeshStandardMaterial({ color: 0x334155 }))
-  pole.position.y = 2.1
-  const housing = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.9, 0.5), new THREE.MeshStandardMaterial({ color: 0x1f2937 }))
-  housing.position.y = 4.5
-  pole.castShadow = housing.castShadow = true
-  g.add(pole, housing)
+function trafficLight(B, position, facing, phase, lamps, mats, group) {
+  const L = B.frame(position, facing)
+  L('cyl', 0x334155, 0, 2.2, 0, 0.24, 4.4, 0.24)
+  L('box', 0x1f2937, 0, 4.6, 0, 0.75, 2, 0.5)
+  L('box', 0x111827, 0, 5.65, 0.05, 0.8, 0.1, 0.6, false)
   ;['r', 'y', 'g'].forEach((color, i) => {
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mats.off)
-    lamp.position.set(0, 5.1 - i * 0.6, 0.27)
+    lamp.position.copy(position).addScaledVector(facing, 0.27).setY(5.2 - i * 0.6)
     lamp.userData = { color, phase }
     lamps.push(lamp)
-    g.add(lamp)
+    group.add(lamp)
+    L('box', 0x111827, 0, 5.38 - i * 0.6, 0.38, 0.5, 0.06, 0.28, false) // visera
   })
-  g.position.copy(position)
-  g.rotation.y = Math.atan2(facing.x, facing.z)
-  return g
 }
 
 // ---------- Ciudad ----------
@@ -383,6 +685,8 @@ export function createCity(network, route) {
   const byId = new Map(network.map((p) => [p.id, p]))
   const isAddress = (id) => byId.get(id)?.type === 'pickup_point'
   const found = route?.found && route.path.length > 0
+  const textures = new Map()
+  const cached = (key, make) => textures.get(key) ?? textures.set(key, make()).get(key)
 
   // Una sola calle por par de puntos; si existe la inversa es de doble sentido.
   const edges = new Map()
@@ -409,10 +713,10 @@ export function createCity(network, route) {
       const dir = new THREE.Vector3().subVectors(b, a).normalize()
       return { ...e, a, b, len, dir, width: e.twoWay ? 6 : 4.4, name: sharedStreet(byId.get(e.from).name, byId.get(e.to).name) }
     })
-  const degree = new Map()
+  const incident = new Map(network.map((p) => [p.id, []]))
   for (const s of streets) {
-    degree.set(s.from, (degree.get(s.from) ?? 0) + 1)
-    degree.set(s.to, (degree.get(s.to) ?? 0) + 1)
+    incident.get(s.from).push({ street: s, out: s.dir.clone() })
+    incident.get(s.to).push({ street: s, out: s.dir.clone().negate() })
   }
 
   // Dirección de cada cliente: la calle más cercana entre las que tocan a su cruce;
@@ -430,7 +734,6 @@ export function createCity(network, route) {
     if (n.dot(new THREE.Vector3().subVectors(p, foot)) < 0) n.negate()
     const number = crossNumber(byId.get(s.from).name, s.name)
     addresses.set(point.id, {
-      street: s,
       park: foot.clone().addScaledVector(n, s.width / 2 - 1.3),
       site: foot.clone().addScaledVector(n, s.width / 2 + WALK + 0.6 + LOT / 2),
       front: n.clone().negate(),
@@ -446,16 +749,19 @@ export function createCity(network, route) {
     for (const n of neighbors.get(point.id)) away.add(new THREE.Vector3().subVectors(p, pos.get(n)).normalize())
     if (away.lengthSq() === 0) away.set(0, 0, -1)
     away.normalize()
-    sites.set(point.id, { site: p.clone().addScaledVector(away, 12), front: away.clone().negate() })
+    sites.set(point.id, { site: p.clone().addScaledVector(away, 13), front: away.clone().negate() })
   }
 
-  // ---- Calles, aceras, cebras, marcas y señales ----
-  const signMats = [true, false].map((right) => new THREE.MeshStandardMaterial({ map: oneWayTexture(right) }))
+  // ---- Calles: asfalto, aceras, cebras, marcas, costo pintado y señales ----
+  const oneWayMats = [true, false].map((right) => new THREE.MeshStandardMaterial({ map: oneWayTexture(right) }))
   for (const s of streets) {
     const mid = new THREE.Vector3().addVectors(s.a, s.b).multiplyScalar(0.5)
     const L = B.frame(mid, s.dir)
     L('box', ASPHALT, 0, 0.05, 0, s.width, 0.1, s.len + CROSS, false)
-    for (const side of [-1, 1]) L('box', SIDEWALK, side * (s.width / 2 + WALK / 2), 0.15, 0, WALK, 0.3, Math.max(0, s.len - CROSS), false)
+    for (const side of [-1, 1]) {
+      L('box', SIDEWALK, side * (s.width / 2 + WALK / 2), 0.15, 0, WALK, 0.3, Math.max(0, s.len - CROSS), false)
+      L('box', 0xcfd5df, side * (s.width / 2 + 0.06), 0.17, 0, 0.12, 0.34, Math.max(0, s.len - CROSS), false) // bordillo
+    }
 
     if (s.twoWay) {
       // Doble sentido: línea central amarilla discontinua.
@@ -466,53 +772,73 @@ export function createCity(network, route) {
         L('box', WHITE, 0, 0.11, z - 0.6, 0.35, 0.03, 1.8, false)
         L('tri', WHITE, 0, 0.11, z + 0.6, 1.3, 0.03, 1.3, false)
       }
-      const base = s.a.clone().addScaledVector(s.dir, CROSS / 2 + 1.5).addScaledVector(rightOf(s.dir), s.width / 2 + WALK / 2)
+      const base = s.a.clone().addScaledVector(s.dir, CROSS / 2 + 2.5).addScaledVector(rightOf(s.dir), s.width / 2 + WALK - 0.4)
+      B.add('cyl', 0x94a3b8, base.x, 1.4, base.z, 0.14, 2.8, 0.14)
+      // La placa va encima del poste: el poste no tapa la flecha ni el texto.
       const sign = new THREE.Group()
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.2, 8), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }))
-      pole.position.y = 1.6
-      pole.castShadow = true
-      sign.add(pole)
-      for (const [mat, turn] of [[signMats[0], 0], [signMats[1], Math.PI]]) {
-        const plate = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.9), mat)
-        plate.position.y = 3.1
-        plate.rotation.y = turn
-        plate.position.z = turn ? -0.02 : 0.02
-        sign.add(plate)
+      for (const [mat, turn] of [[oneWayMats[0], 0], [oneWayMats[1], Math.PI]]) {
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.9), mat)
+        face.rotation.y = turn
+        face.position.z = turn ? -0.02 : 0.02
+        sign.add(face)
       }
-      sign.position.copy(base)
-      sign.rotation.y = Math.atan2(-s.dir.z, s.dir.x) // la flecha (+x de la placa) apunta en el sentido de la calle
+      sign.position.copy(base).setY(3.25)
+      sign.rotation.y = yawX(s.dir)
       group.add(sign)
     }
 
     // Cebras en los extremos que llegan a un cruce.
     for (const [node, end] of [[s.from, -1], [s.to, 1]]) {
-      if ((degree.get(node) ?? 0) < 3) continue
+      if (incident.get(node).length < 3) continue
       const z = end * (s.len / 2 - CROSS / 2 - 1.4)
       for (let x = -s.width / 2 + 0.6; x < s.width / 2 - 0.3; x += 1) L('box', WHITE, x, 0.11, z, 0.5, 0.03, 2.2, false)
     }
 
-    // Nombre de la calle y costo de la conexión.
-    const tag = label(`${s.name ? `${s.name} · ` : ''}${s.cost} km${s.twoWay ? ' ⇄' : ''}`, { size: 22, color: '#334155' })
-    tag.position.copy(mid).addScaledVector(rightOf(s.dir), s.width / 2 + WALK / 2).setY(1.6)
-    group.add(tag)
+    // Costo de la conexión pintado en el asfalto, en el carril derecho.
+    const paint = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.8, 1.8),
+      new THREE.MeshStandardMaterial({ map: cached(`paint:${s.cost}`, () => paintTexture(`${s.cost} km`)), transparent: true, depthWrite: false }),
+    )
+    paint.position.copy(mid).addScaledVector(rightOf(s.dir), s.twoWay ? s.width / 4 : 0).setY(0.13)
+    paint.rotation.order = 'YXZ'
+    paint.rotation.set(-Math.PI / 2, yawX(rightOf(s.dir)), 0) // se lee en el sentido de la marcha, como las marcas viales
+    group.add(paint)
+
+    // Mobiliario: postes de luz y canecas en la acera.
+    for (const side of [1, -1]) {
+      const n = rightOf(s.dir).multiplyScalar(side)
+      for (let along = CROSS + 2; along < s.len - CROSS; along += 13) {
+        const p = s.a.clone().addScaledVector(s.dir, along + (side > 0 ? 0 : 6)).addScaledVector(n, s.width / 2 + 0.45)
+        const F = B.frame(p, n.clone().negate())
+        F('cyl', 0x475569, 0, 2.6, 0, 0.16, 5.2, 0.16)
+        F('box', 0x475569, 0, 5.15, 0.6, 0.1, 0.1, 1.3, false)
+        F('box', 0x1f2937, 0, 5.05, 1.2, 0.5, 0.15, 0.7, false)
+        F('box', 0xfff7cc, 0, 4.96, 1.2, 0.4, 0.04, 0.55, false)
+        if (rand() < 0.4) F('cyl', 0x15803d, 0.9, 0.55, -0.2, 0.55, 0.8, 0.55)
+        if (rand() < 0.15) {
+          F('cyl', 0xdc2626, -0.9, 0.5, -0.2, 0.3, 0.7, 0.3)
+          F('sphere', 0xdc2626, -0.9, 0.9, -0.2, 0.32, 0.3, 0.32, false)
+        }
+      }
+    }
 
     // Peatones caminando por la acera (ida y vuelta).
     for (const side of [-1, 1]) {
-      if (rand() < 0.35 || s.len < 16) continue
-      const offset = rightOf(s.dir).multiplyScalar(side * (s.width / 2 + WALK / 2))
+      if (rand() < 0.45 || s.len < 16) continue
+      const offset = rightOf(s.dir).multiplyScalar(side * (s.width / 2 + WALK / 2 + 0.2))
       const walker = pedestrian(rand)
-      walker.userData = {
+      Object.assign(walker.userData, {
         from: s.a.clone().addScaledVector(s.dir, CROSS / 2 + 1).add(offset),
         to: s.b.clone().addScaledVector(s.dir, -(CROSS / 2 + 1)).add(offset),
         speed: 1.2 + rand() * 0.8,
         phase: rand() * 100,
-      }
+      })
       anim.walkers.push(walker)
       group.add(walker)
     }
   }
 
-  // ---- Semáforos en los cruces de tres o más calles ----
+  // ---- Esquinas: placas de nomenclatura y semáforos ----
   const lampMats = {
     off: new THREE.MeshStandardMaterial({ color: 0x374151 }),
     r: new THREE.MeshBasicMaterial({ color: 0xff3b30 }),
@@ -521,53 +847,66 @@ export function createCity(network, route) {
   }
   anim.lampMats = lampMats
   for (const point of network) {
-    if ((degree.get(point.id) ?? 0) < 3 || point.type !== 'neighborhood') continue
     const p = pos.get(point.id)
-    const incident = streets.filter((s) => s.from === point.id || s.to === point.id).slice(0, 2)
-    incident.forEach((s, i) => {
-      const out = s.from === point.id ? s.dir.clone() : s.dir.clone().negate()
-      const spot = p.clone().addScaledVector(out, CROSS / 2 + 1.2).addScaledVector(rightOf(out), -(s.width / 2 + 0.7))
-      group.add(trafficLight(spot, out, i % 2, anim.lamps, lampMats))
-    })
+    const around = incident.get(point.id)
+    // Cada nombre de calle que llega a la esquina, con la dirección en que sale.
+    const named = new Map()
+    for (const { street, out } of around) if (street.name && !named.has(street.name)) named.set(street.name, out)
+    if (point.type === 'neighborhood' && named.size) {
+      const [[name1, o1], second] = [...named]
+      // La otra calle se busca hacia la derecha de la primera para dejar libre la esquina del semáforo.
+      const o2 = second ? second[1] : rightOf(o1)
+      const corner = p.clone().addScaledVector(o1, CROSS / 2 + WALK / 2 + 0.3).addScaledVector(o2, CROSS / 2 + WALK / 2 + 0.3)
+      B.add('cyl', 0x334155, corner.x, 2, corner.z, 0.14, 4, 0.14)
+      B.add('sphere', 0x334155, corner.x, 4.05, corner.z, 0.2, 0.2, 0.2, false)
+      ;[[name1, o1, 3.75], ...(second ? [[second[0], second[1], 3.15]] : [])].forEach(([name, dir, y]) => {
+        const [texture, ratio] = cached(`street:${name}`, () => streetSignTexture(name))
+        const blade = plate(texture, 0.55 * ratio, 0.55)
+        // Montada como bandera: sale del poste a lo largo de su calle.
+        blade.position.copy(corner).addScaledVector(dir, (0.55 * ratio) / 2 + 0.12).setY(y)
+        blade.rotation.y = yawX(dir)
+        group.add(blade)
+      })
+    } else if (point.type === 'neighborhood' && !/\s+con\s+/i.test(point.name)) {
+      // Punto sin nombre de cruce: un letrero propio en la acera.
+      const [texture, ratio] = boardTexture(point.name, null, '#334155')
+      const board = plate(texture, 0.9 * ratio, 0.9)
+      const spot = p.clone().add(new THREE.Vector3(CROSS / 2 + 1, 0, CROSS / 2 + 1))
+      B.add('cyl', 0x334155, spot.x, 1.3, spot.z, 0.12, 2.6, 0.12)
+      board.position.copy(spot).setY(3)
+      group.add(board)
+    }
+
+    if (around.length >= 3 && point.type === 'neighborhood') {
+      around.slice(0, 2).forEach(({ street, out }, i) => {
+        const spot = p.clone().addScaledVector(out, CROSS / 2 + 2.4).addScaledVector(rightOf(out), -(street.width / 2 + WALK - 0.4))
+        trafficLight(B, spot, out, i % 2, anim.lamps, lampMats, group)
+      })
+    }
   }
 
-  // ---- Clientes, bodegas y cruces con nombre propio ----
+  // ---- Clientes y bodegas ----
   const occupied = [] // [centro, radio] de lo ya construido
   for (const point of network) {
     const address = addresses.get(point.id)
     const yard = sites.get(point.id)
-    if (address) {
-      house(B.frame(address.site, address.front), WHITE, BLUE)
-      occupied.push([address.site, 3.6])
-      const tag = label(address.text ? `${point.name} · ${address.text}` : point.name, { size: 24 })
-      tag.position.copy(address.site).setY(6.2)
-      group.add(tag)
-      const cost = [...edges.values()].find((e) => (e.from === point.id || e.to === point.id))?.cost
-      if (cost) {
-        const parkTag = label(`${cost} km`, { size: 20, color: '#475569' })
-        parkTag.position.copy(address.park).setY(1.2)
-        group.add(parkTag)
-      }
+    const lone = !address && !yard && point.type === 'pickup_point'
+    if (address || lone) {
+      const site = address?.site ?? pos.get(point.id)
+      const front = address?.front ?? new THREE.Vector3(0, 0, 1)
+      house(B.frame(site, front), rand, WHITE, BLUE)
+      occupied.push([site, 3.6])
+      // Letrero del cliente en el antejardín, mirando a la calle.
+      const [texture, ratio] = boardTexture(point.name, address?.text ?? 'Cliente WareTrack', '#2563eb')
+      const board = plate(texture, 0.95 * ratio, 0.95)
+      const L = B.frame(site, front)
+      L('cyl', 0x334155, 2.6, 0.9, 3.25, 0.1, 1.8, 0.1)
+      board.position.copy(site).addScaledVector(front, 3.25).addScaledVector(new THREE.Vector3(front.z, 0, -front.x), 2.6 - (0.95 * ratio) / 2).setY(2.2)
+      board.rotation.y = Math.atan2(front.x, front.z)
+      group.add(board)
     } else if (yard) {
-      const w = warehouseMesh()
-      w.position.copy(yard.site)
-      w.rotation.y = Math.atan2(yard.front.x, yard.front.z) + Math.PI
-      group.add(w)
-      occupied.push([yard.site, 8], [yard.site.clone().addScaledVector(yard.front, -6), 8])
-      const tag = label(point.name, { size: 26 })
-      tag.position.copy(yard.site).setY(8.2)
-      group.add(tag)
-    } else if (point.type === 'pickup_point') {
-      // Cliente sin calles en la red: la casa queda sola en su posición.
-      house(B.frame(pos.get(point.id), new THREE.Vector3(0, 0, 1)), WHITE, BLUE)
-      occupied.push([pos.get(point.id), 3.6])
-      const tag = label(point.name, { size: 24 })
-      tag.position.copy(pos.get(point.id)).setY(6.2)
-      group.add(tag)
-    } else if (!/\s+con\s+/i.test(point.name)) {
-      const tag = label(point.name, { size: 18, bg: 'rgba(255,255,255,0.8)' })
-      tag.position.copy(pos.get(point.id)).setY(2)
-      group.add(tag)
+      group.add(warehouseMesh(B, yard.site, yard.front, point.name))
+      occupied.push([yard.site, 9], [yard.site.clone().addScaledVector(yard.front, -6), 9])
     }
   }
 
@@ -590,18 +929,19 @@ export function createCity(network, route) {
         occupied.push([center, 3.2])
         const L = B.frame(center, n.clone().negate())
         const roll = rand()
-        if (roll < 0.4) house(L, WALLS[Math.floor(rand() * WALLS.length)], ROOFS[Math.floor(rand() * ROOFS.length)])
-        else if (roll < 0.6) townhouse(L, WALLS[Math.floor(rand() * WALLS.length)])
-        else if (roll < 0.75) apartment(L, rand)
-        else if (roll < 0.88) shop(L, rand)
+        if (roll < 0.36) house(L, rand, pick(rand, WALLS), pick(rand, ROOFS))
+        else if (roll < 0.56) townhouse(L, rand, pick(rand, WALLS))
+        else if (roll < 0.72) apartment(L, rand)
+        else if (roll < 0.86) shop(L, rand)
         else park(L, rand)
       }
-      // Árboles en la acera, entre lotes.
-      for (let along = CROSS + 4; along < s.len - CROSS - 2; along += 9) {
-        if (rand() < 0.4) continue
-        const spot = s.a.clone().addScaledVector(s.dir, along).addScaledVector(n, s.width / 2 + WALK - 0.4)
+      // Árboles en la acera, entre los postes.
+      for (let along = CROSS + 5; along < s.len - CROSS - 2; along += 8.5) {
+        if (rand() < 0.35) continue
+        const spot = s.a.clone().addScaledVector(s.dir, along).addScaledVector(n, s.width / 2 + WALK - 0.5)
         if (occupied.some(([o, r]) => o.distanceTo(spot) < r + 0.8)) continue
-        tree(B.frame(spot, new THREE.Vector3(0, 0, 1)), 0, 0, rand, 0.7)
+        B.add('cyl', 0x8b7355, spot.x, 0.33, spot.z, 1.1, 0.06, 1.1, 0, false) // alcorque
+        tree(B.frame(spot, new THREE.Vector3(0, 0, 1)), 0, 0, rand, 0.65)
       }
     }
   }
@@ -645,7 +985,7 @@ export function createCity(network, route) {
     for (const [id, text, color] of roles) {
       if (!pos.has(id)) continue
       const marker = pin(color, text)
-      marker.position.copy(markerAt(id)).setY(sites.has(id) ? 12 : 10)
+      marker.position.copy(markerAt(id)).setY(sites.has(id) ? 13 : 10)
       marker.userData.baseY = marker.position.y
       anim.bobs.push(marker)
       group.add(marker)
@@ -659,9 +999,11 @@ export function createCity(network, route) {
     }
   }
 
+  const radius = Math.max(40, ...nodes.map((n) => Math.max(Math.abs(n.x), Math.abs(n.z))))
   return {
     group,
     timeline: tl,
+    radius,
     addresses: new Map([...addresses].filter(([, a]) => a.text).map(([id, a]) => [id, a.text])),
   }
 }
@@ -686,7 +1028,8 @@ function timeline(route, points) {
   }
 }
 
-export function animateCity(group, time) {
+// `focus` (opcional): los peatones lejos de la zona nítida no se animan ni se dibujan.
+export function animateCity(group, time, focus = null) {
   const { pulses = [], bobs = [], lamps = [], walkers = [], lampMats } = group.userData
   for (const o of pulses) o.scale.setScalar(1 + Math.sin(time * 4) * 0.12)
   for (const o of bobs) o.position.y = o.userData.baseY + Math.sin(time * 3) * 0.3
@@ -696,39 +1039,83 @@ export function animateCity(group, time) {
     const active = t < 4 ? 'g' : t < 5 ? 'y' : 'r'
     lamp.material = lamp.userData.color === active ? lampMats[active] : lampMats.off
   }
+  const far = FOCUS_HALF + 20
   for (const w of walkers) {
-    const { from, to, speed, phase } = w.userData
+    const { from, to, speed, phase, limbs } = w.userData
+    if (focus) {
+      w.visible = Math.abs((from.x + to.x) / 2 - focus.x) < far && Math.abs((from.z + to.z) / 2 - focus.z) < far
+      if (!w.visible) continue
+    }
     const len = from.distanceTo(to)
     const d = ((time + phase) * speed) % (2 * len)
     const forward = d < len
     w.position.lerpVectors(from, to, forward ? d / len : 2 - d / len)
-    w.position.y = 0.3 + Math.abs(Math.sin(time * speed * 5)) * 0.06
+    w.position.y = 0.3 + Math.abs(Math.sin(time * speed * 5)) * 0.05
     w.rotation.y = Math.atan2(to.x - from.x, to.z - from.z) + (forward ? 0 : Math.PI)
+    const swing = Math.sin(time * speed * 5) * 0.5
+    limbs.legs[0].rotation.x = swing
+    limbs.legs[1].rotation.x = -swing
+    limbs.arms[0].rotation.x = -swing
+    limbs.arms[1].rotation.x = swing
   }
+}
+
+function truckLogo() {
+  return canvasTexture(256, 96, (ctx) => {
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 256, 96)
+    ctx.fillStyle = '#2563eb'
+    ctx.font = '800 44px Plus Jakarta Sans, system-ui, sans-serif'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('WareTrack', 18, 46)
+  })
 }
 
 export function makeTruck() {
   const g = new THREE.Group()
-  const part = (w, h, d, color, x, y, z) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }))
+  const part = (w, h, d, color, x, y, z, basic = false) => {
+    const material = basic ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshStandardMaterial({ color, roughness: 0.55 })
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material)
     mesh.position.set(x, y, z)
     mesh.castShadow = true
     g.add(mesh)
   }
   part(5.4, 0.4, 2.1, 0x1f2937, 0.3, 0.6, 0) // chasis
   part(4.2, 2.6, 2.4, 0xffffff, -0.5, 2.1, 0) // caja de carga
-  part(4.22, 0.4, 2.42, 0x14b8a6, -0.5, 1.3, 0) // franja WareTrack
+  part(4.22, 0.4, 2.42, 0x14b8a6, -0.5, 1.3, 0) // franja
+  part(0.05, 2.4, 2.2, 0xe5e7eb, -2.62, 2.1, 0) // puerta trasera
   part(1.8, 2.1, 2.3, 0xffffff, 2.5, 1.85, 0) // cabina
   part(0.08, 0.9, 2, 0x1e293b, 3.42, 2.3, 0) // parabrisas
+  part(1, 0.7, 0.05, 0x1e293b, 2.5, 2.35, 1.16) // ventanas laterales
+  part(1, 0.7, 0.05, 0x1e293b, 2.5, 2.35, -1.16)
+  part(0.2, 0.35, 2.3, 0x9ca3af, 3.5, 0.75, 0) // parachoques
+  part(0.06, 0.5, 1.2, 0x374151, 3.43, 1.25, 0) // rejilla
+  part(0.06, 0.25, 0.4, 0xfff7cc, 3.44, 1.3, 0.85, true) // farolas
+  part(0.06, 0.25, 0.4, 0xfff7cc, 3.44, 1.3, -0.85, true)
+  part(0.06, 0.2, 0.3, 0xef4444, -2.65, 0.9, 0.9, true) // stops
+  part(0.06, 0.2, 0.3, 0xef4444, -2.65, 0.9, -0.9, true)
+  part(0.15, 0.4, 0.1, 0x111827, 3.1, 2.4, 1.3) // espejos
+  part(0.15, 0.4, 0.1, 0x111827, 3.1, 2.4, -1.3)
+  const logoMat = new THREE.MeshStandardMaterial({ map: truckLogo() })
+  for (const side of [1, -1]) {
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.1), logoMat)
+    logo.position.set(-0.5, 2.4, side * 1.215)
+    logo.rotation.y = side > 0 ? 0 : Math.PI
+    g.add(logo)
+  }
   const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 18)
   const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827 })
+  const hubMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af })
   for (const x of [-1.8, -0.6, 2.4]) {
     for (const z of [1.05, -1.05]) {
       const wheel = new THREE.Mesh(wheelGeo, wheelMat)
       wheel.rotation.x = Math.PI / 2
       wheel.position.set(x, 0.5, z)
       wheel.castShadow = true
-      g.add(wheel)
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.42, 10), hubMat)
+      hub.rotation.x = Math.PI / 2
+      hub.position.set(x, 0.5, z)
+      g.add(wheel, hub)
     }
   }
   g.scale.setScalar(0.75)
@@ -764,7 +1151,7 @@ export function truckState(tl, time) {
   const frac = tl.lengths[i] ? (d - tl.cum[i]) / tl.lengths[i] : 0
   const a = tl.points[i]
   const b = tl.points[i + 1]
-  const remainingKm = tl.costs.slice(i + 1).reduce((s, c) => s + c, tl.costs[i] * (1 - frac))
+  const remainingKm = Math.max(0, tl.costs.slice(i + 1).reduce((s, c) => s + c, tl.costs[i] * (1 - frac)))
   return {
     position: new THREE.Vector3().lerpVectors(a, b, frac),
     heading: Math.atan2(b.x - a.x, b.z - a.z) - Math.PI / 2, // el frente del camión es +x

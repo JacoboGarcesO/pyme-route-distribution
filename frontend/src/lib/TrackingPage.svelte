@@ -106,7 +106,7 @@
 
   function overview() {
     following = false
-    stage.camera.position.set(45, 70, 95)
+    stage.camera.position.set(55, 95, 120)
     stage.controls.target.set(0, 0, 0)
   }
 
@@ -140,7 +140,8 @@
   }
 
   onMount(() => {
-    stage = createStage(container)
+    stage = createStage(container, { focusBlur: true })
+    stage.controls.maxDistance = 160 // la vista abarca unas 3 x 3 manzanas
     // Mover el mapa con el ratón o el dedo suelta la cámara del camión.
     stage.controls.addEventListener('start', () => (following = false))
     truck = makeTruck()
@@ -157,7 +158,7 @@
           status = state
         }
       }
-      animateCity(city.group, time)
+      animateCity(city.group, time, stage.controls.target)
     })
     loadNetwork()
 
