@@ -80,7 +80,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 - **Hecho cuando:** se explica que el dibujo usa solo datos calculados por el backend.
 - **Nota:** existe la rama `feat-4/network-map` con posiciones `x, y`; evaluar si se rescata.
 
-### [ ] T11 · Exponer en `GET /network` los datos del dibujo (45 min) · **Jacobo**
+### [x] T11 · Exponer en `GET /network` los datos del dibujo (45 min) · **Jacobo**
 - **Entregable:** posiciones u otro dato acordado en T10, validado en el núcleo.
 - **Hecho cuando:** `GET /network` devuelve todo lo necesario para dibujar nodos y flechas, con la red vacía como caso válido.
 
@@ -108,7 +108,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 4 — Script de aceptación
 
-### [ ] T17 · Esqueleto y escenario normal (45 min) · **Jacobo**
+### [x] T17 · Esqueleto y escenario normal (45 min) · **Jacobo**
 - **Entregable:** `acceptance/scripts/acceptance_feature_4.py` reutilizando el reporte común; escenario: red pequeña, cobertura y ruta.
 - **Hecho cuando:** comprueba secuencia y costo mínimo.
 

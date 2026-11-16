@@ -14,7 +14,7 @@ def create_point():
     if body.get("name") is None or body.get("type") is None:
         raise MissingData("Los campos 'name' y 'type' son obligatorios.")
     graph = current_app.extensions["graph"]
-    point = graph.add_point(body["name"], body["type"])
+    point = graph.add_point(body["name"], body["type"], body.get("x"), body.get("y"))
     return point.to_dict(), 201
 
 
