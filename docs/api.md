@@ -43,16 +43,17 @@ Respuesta 200:
 Entrada:
 
 ```json
-{ "name": "Central warehouse", "type": "warehouse" }
+{ "name": "Central warehouse", "type": "warehouse", "x": 0, "y": 1 }
 ```
 
 - `name`: texto obligatorio, no vacío ni solo espacios. Puede repetirse entre puntos.
 - `type`: uno de `warehouse`, `neighborhood`, `pickup_point`.
+- `x`, `y`: opcionales, números finitos que ubican el punto en el mapa. Se envían juntos; si falta uno, o no son números, se responde 422 `INVALID_POSITION`. Sin ellos, el punto no tiene posición.
 
 Respuesta 201:
 
 ```json
-{ "id": "3f2b8c1e-9a4d-4e6b-b1d7-5c0a2e8f7a11", "name": "Central warehouse", "type": "warehouse" }
+{ "id": "3f2b8c1e-9a4d-4e6b-b1d7-5c0a2e8f7a11", "name": "Central warehouse", "type": "warehouse", "x": 0, "y": 1 }
 ```
 
 ### GET `/points`
@@ -60,7 +61,7 @@ Respuesta 201:
 Respuesta 200 (con la red vacía devuelve una lista vacía, no un error):
 
 ```json
-{ "points": [ { "id": "3f2b8c1e-...", "name": "Central warehouse", "type": "warehouse" } ] }
+{ "points": [ { "id": "3f2b8c1e-...", "name": "Central warehouse", "type": "warehouse", "x": 0, "y": 1 } ] }
 ```
 
 ### POST `/connections`
@@ -98,6 +99,8 @@ Respuesta 200:
       "id": "3f2b8c1e-...",
       "name": "Central warehouse",
       "type": "warehouse",
+      "x": 0,
+      "y": 1,
       "connections": [
         { "destination_id": "a91c04d2-...", "destination_name": "North", "cost_km": "4.5" }
       ]
@@ -130,6 +133,7 @@ El campo `code` es estable y lo puede usar el script de aceptación; el `message
 | C5 | `cost_km` no es un texto decimal válido (letras, vacío, número JSON, infinito, NaN) | 400 | `INVALID_COST` |
 | P2 | El nombre es vacío o solo espacios | 422 | `INVALID_NAME` |
 | P3 | El tipo no está en la lista cerrada | 422 | `INVALID_TYPE` |
+| P3b | `x` e `y` no se envían juntos o no son números finitos | 422 | `INVALID_POSITION` |
 | C4 | Origen y destino son el mismo punto | 422 | `SELF_LOOP` |
 | C6 | El costo es menor o igual que 0 | 422 | `NON_POSITIVE_COST` |
 | C7 | El costo tiene más de 7 decimales | 422 | `COST_PRECISION` |
@@ -167,7 +171,7 @@ La API no manipula el grafo directamente: delega todo en una clase `Graph` del n
 
 | Clase | Campos |
 |---|---|
-| `Point` | `id` (UUID), `name` (texto), `type` (`warehouse`, `neighborhood` o `pickup_point`) |
+| `Point` | `id` (UUID), `name` (texto), `type` (`warehouse`, `neighborhood` o `pickup_point`), `x` e `y` (números opcionales; `null` si no hay posición) |
 | `Connection` | `origin_id`, `destination_id`, `cost_km` (`Decimal`) |
 
 ### Clase `Graph`
@@ -176,7 +180,7 @@ Estado interno: los puntos por UUID y la lista de adyacencia `{origin_id: {desti
 
 | Método | Entrada | Devuelve | Errores que puede lanzar |
 |---|---|---|---|
-| `add_point` | `name`, `type` | `Point` con UUID nuevo | `InvalidName`, `InvalidType` |
+| `add_point` | `name`, `type`, `x` e `y` opcionales | `Point` con UUID nuevo | `InvalidName`, `InvalidType`, `InvalidPosition` |
 | `list_points` | — | lista de `Point` | — |
 | `add_connection` | `origin_id`, `destination_id`, `cost_km` | `Connection` | `OriginNotFound`, `DestinationNotFound`, `SelfLoop`, `InvalidCost`, `NonPositiveCost`, `CostPrecision`, `DuplicateConnection`, `InconsistentCost` |
 | `list_connections` | — | lista de `Connection` | — |
@@ -195,6 +199,7 @@ Cada situación de rechazo es una excepción propia del núcleo, y una sola capa
 | `InvalidCost` | 400 | `INVALID_COST` |
 | `InvalidName` | 422 | `INVALID_NAME` |
 | `InvalidType` | 422 | `INVALID_TYPE` |
+| `InvalidPosition` | 422 | `INVALID_POSITION` |
 | `SelfLoop` | 422 | `SELF_LOOP` |
 | `NonPositiveCost` | 422 | `NON_POSITIVE_COST` |
 | `CostPrecision` | 422 | `COST_PRECISION` |
@@ -328,6 +333,7 @@ Parámetros de consulta:
 |---|---|---|
 | `origin` | Sí | UUID del punto de origen |
 | `destination` | Sí | UUID del punto de destino |
+| `via` | No | UUID de una parada obligatoria (cambio de requisito de F4, ver más abajo) |
 
 Que **no exista ruta no es un error**: es una respuesta válida de negocio (200 con `found: false`). Los errores son solo los de entrada: falta un parámetro o un punto no existe.
 
@@ -411,8 +417,40 @@ Todos siguen el formato de F1: `{"error": {"code", "message"}}`.
 | Falta `origin` o `destination` (ausente, vacío o solo espacios) | 400 | `MISSING_DATA` |
 | `origin` no existe, es UUID inválido, o la red está vacía | 404 | `ORIGIN_NOT_FOUND` |
 | `destination` no existe o es UUID inválido | 404 | `DESTINATION_NOT_FOUND` |
+| `via` no existe o es UUID inválido | 404 | `VIA_NOT_FOUND` |
 
-Los errores usan los códigos de F1; no se crea ninguno nuevo.
+Los errores usan los códigos de F1, salvo `VIA_NOT_FOUND` que agrega F4. Se validan en este orden: `origin`, `destination` y `via`.
+
+### Parada obligatoria: `via` (F4)
+
+Cambio de requisito de F4 (`CAMBIO-REQUISITO-F4`); resumen y archivos en [`cambio-requisito-f4.md`](cambio-requisito-f4.md).
+
+Con `via`, la ruta debe pasar por ese punto. Es la ruta de menor costo entre las que pasan por la parada: la mejor de origen a parada más la mejor de parada a destino (dos Dijkstra encadenados), y `total_cost_km` es la suma exacta de ambas.
+
+Entrada: `GET /shortest-path?origin=3f2b8c1e-...&destination=c7e1f0b3-...&via=e2a4b6c8-...`
+
+```json
+{
+  "origin_id": "3f2b8c1e-...",
+  "destination_id": "c7e1f0b3-...",
+  "via_id": "e2a4b6c8-...",
+  "found": true,
+  "path": [ "Bodega", "Taller", "Casa A" ],
+  "connections": [ { "origin_id": "3f2b8c1e-...", "destination_id": "e2a4b6c8-...", "cost_km": "1" }, { "origin_id": "e2a4b6c8-...", "destination_id": "c7e1f0b3-...", "cost_km": "10" } ],
+  "total_cost_km": "11"
+}
+```
+
+(`path` se abrevia aquí con nombres; la API devuelve los objetos punto de siempre.)
+
+| Caso | Resultado |
+|---|---|
+| `via` ya está en la mejor ruta | La misma ruta que sin `via` |
+| `via` igual al origen o al destino | La ruta normal |
+| `via` fuera de la mejor ruta | La ruta con el desvío obligado, de mayor costo |
+| La parada obliga a volver sobre un punto | Se permite: el punto aparece dos veces en `path` |
+| No hay camino origen→`via` o `via`→destino | 200, `found: false`, `reason` con el tramo que falla |
+| Sin `via` | Idéntico a F3; `via_id` no aparece |
 
 ### Orden de validación
 

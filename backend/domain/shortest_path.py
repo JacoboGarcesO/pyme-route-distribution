@@ -6,7 +6,7 @@ from itertools import count
 from typing import NamedTuple
 
 from domain.coverage import find_point
-from domain.errors import DestinationNotFound, OriginNotFound
+from domain.errors import DestinationNotFound, OriginNotFound, ViaNotFound
 from domain.graph import Connection, Point, format_cost
 
 
@@ -26,6 +26,7 @@ class PathResult(NamedTuple):
     connections: list
     total_cost: object  # Decimal | None
     reason: str | None = None
+    via: object = None  # Point | None: parada obligatoria de F4
 
     def to_dict(self):
         result = {
@@ -36,6 +37,8 @@ class PathResult(NamedTuple):
             "connections": [c.to_dict() for c in self.connections],
             "total_cost_km": None if self.total_cost is None else format_cost(self.total_cost),
         }
+        if self.via:
+            result["via_id"] = str(self.via.id)
         if self.reason:
             result["reason"] = self.reason
         return result
@@ -83,23 +86,44 @@ def reconstruct_path(pred, origin_id, destination_id):
     return path
 
 
-def shortest_path(graph, origin_id, destination_id):
+def _leg(graph, origin_id, destination_id):
+    """Ids de la ruta de menor costo y su costo, o None si no hay camino dirigido."""
+    dist, pred = dijkstra(graph, origin_id, destination_id)
+    if destination_id not in dist:
+        return None
+    return reconstruct_path(pred, origin_id, destination_id), dist[destination_id]
+
+
+def shortest_path(graph, origin_id, destination_id, via_id=None):
     """Ruta de menor costo de `origin_id` a `destination_id` como `PathResult` (T12).
 
-    Valida primero el origen y luego el destino con las excepciones de F1
-    (`OriginNotFound`, `DestinationNotFound`): un UUID inválido cuenta como
-    inexistente. Que no haya camino dirigido NO es un error: devuelve
-    `found=False` con `reason`. Origen igual al destino es una ruta de un punto
-    con costo 0 (T05).
+    Valida primero el origen, luego el destino y al final la parada con las
+    excepciones de F1 (`OriginNotFound`, `DestinationNotFound`) y `ViaNotFound`:
+    un UUID inválido cuenta como inexistente. Que no haya camino dirigido NO es
+    un error: devuelve `found=False` con `reason`. Origen igual al destino es una
+    ruta de un punto con costo 0 (T05).
+
+    Con `via_id` (CAMBIO-REQUISITO-F4, docs/cambio-requisito-f4.md) la ruta debe pasar por esa parada:
+    es la mejor ruta origen→parada más la mejor parada→destino, cada una con
+    Dijkstra. Es el mínimo entre las rutas que pasan por la parada. Puede
+    repetir un punto si la parada obliga a volver sobre él.
     """
     origin = find_point(graph, origin_id, OriginNotFound, "punto de origen")
     destination = find_point(graph, destination_id, DestinationNotFound, "punto de destino")
-    dist, pred = dijkstra(graph, origin.id, destination.id)
-    if destination.id not in dist:
-        reason = f"No hay un camino dirigido desde '{origin.name}' hasta '{destination.name}'."
-        return PathResult(origin, destination, False, [], [], None, reason)
-    ids = reconstruct_path(pred, origin.id, destination.id)
+    via = find_point(graph, via_id, ViaNotFound, "punto de parada") if via_id else None
+    stops = [origin.id] + ([via.id] if via else []) + [destination.id]
+    ids, total = [origin.id], Decimal(0)
+    for start, end in zip(stops, stops[1:]):
+        leg = _leg(graph, start, end)
+        if leg is None:
+            names = {p.id: p.name for p in graph.list_points()}
+            reason = f"No hay un camino dirigido desde '{names[start]}' hasta '{names[end]}'."
+            if via:
+                reason += f" Sin él no se puede pasar por la parada '{via.name}'."
+            return PathResult(origin, destination, False, [], [], None, reason, via)
+        ids += leg[0][1:]
+        total += leg[1]
     points = {point.id: point for point in graph.list_points()}
-    costs = [graph.neighbors(a)[b] for a, b in zip(ids, ids[1:])]
-    connections = [Connection(a, b, cost) for (a, b), cost in zip(zip(ids, ids[1:]), costs)]
-    return PathResult(origin, destination, True, [points[i] for i in ids], connections, dist[destination.id])
+    pairs = list(zip(ids, ids[1:]))
+    connections = [Connection(a, b, graph.neighbors(a)[b]) for a, b in pairs]
+    return PathResult(origin, destination, True, [points[i] for i in ids], connections, total, None, via)

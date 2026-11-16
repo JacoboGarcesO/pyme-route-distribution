@@ -30,6 +30,10 @@ class InvalidType(GraphError):
     """P3: el tipo no está en la lista cerrada."""
 
 
+class InvalidPosition(GraphError):
+    """P3b: la posición en el mapa no son dos números finitos enviados juntos."""
+
+
 class SelfLoop(GraphError):
     """C4: origen y destino son el mismo punto."""
 
@@ -48,6 +52,10 @@ class OriginNotFound(GraphError):
 
 class DestinationNotFound(GraphError):
     """C3: el UUID de destino es inválido o no existe."""
+
+
+class ViaNotFound(GraphError):
+    """F4: el UUID de la parada obligatoria es inválido o no existe."""
 
 
 class PointNotFound(GraphError):
