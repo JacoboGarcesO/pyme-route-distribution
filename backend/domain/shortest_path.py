@@ -103,7 +103,7 @@ def shortest_path(graph, origin_id, destination_id, via_id=None):
     un error: devuelve `found=False` con `reason`. Origen igual al destino es una
     ruta de un punto con costo 0 (T05).
 
-    Con `via_id` (cambio de requisito de F4) la ruta debe pasar por esa parada:
+    Con `via_id` (CAMBIO-REQUISITO-F4, docs/cambio-requisito-f4.md) la ruta debe pasar por esa parada:
     es la mejor ruta origen→parada más la mejor parada→destino, cada una con
     Dijkstra. Es el mínimo entre las rutas que pasan por la parada. Puede
     repetir un punto si la parada obliga a volver sobre él.

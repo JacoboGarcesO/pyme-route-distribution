@@ -177,8 +177,17 @@ Las decisiones de algoritmo, alcance y casos borde están documentadas en
 [`docs/diseno.md`](docs/diseno.md). La evidencia está en
 [`docs/evidencia-f2.txt`](docs/evidencia-f2.txt).
 
+## Cambio de requisito de Feature 4 — Parada obligatoria
+
+`GET /shortest-path` acepta el parámetro opcional `via=<id>`: la ruta de menor
+costo debe pasar por esa parada. Está explicado, con los archivos que lo
+implementan y lo que falta, en
+[`docs/cambio-requisito-f4.md`](docs/cambio-requisito-f4.md).
+
 ## Documentación
 
+- [Cambio de requisito de Feature 4 (parada obligatoria)](docs/cambio-requisito-f4.md)
+- [Plan de tareas de Feature 4](docs/05-tareas-feature-4.md)
 - [Guía común](docs/03-guia-comun-estudiantes.md)
 - [Brief de RutaPyme](docs/04-brief-rutapyme.md)
 - [Decisiones de diseño](docs/diseno.md)

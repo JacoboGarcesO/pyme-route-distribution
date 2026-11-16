@@ -10,7 +10,7 @@ Estados sugeridos: `[ ]` pendiente · `[~]` en curso · `[x]` hecha.
 
 El despachador registra una red pequeña, verifica cobertura, solicita una ruta, entiende por qué se seleccionó (viéndola en la red) y obtiene una respuesta correcta ante datos inválidos o falta de conexión. F4 también incorpora el cambio de requisito comunicado por el docente.
 
-**Cambio de requisito elegido por el equipo:** parada obligatoria. `GET /shortest-path` acepta `via=<id>` y la ruta debe pasar por ese punto (T04–T09, T20).
+**Cambio de requisito elegido por el equipo (detalle en [`docs/cambio-requisito-f4.md`](cambio-requisito-f4.md)):** parada obligatoria. `GET /shortest-path` acepta `via=<id>` y la ruta debe pasar por ese punto (T04–T09, T20).
 
 F4 no incluye algoritmos nuevos fuera del cambio de requisito, tráfico en tiempo real ni más de una entrega por consulta. NetworkX, si se usa, solo dibuja datos ya calculados por el backend.
 

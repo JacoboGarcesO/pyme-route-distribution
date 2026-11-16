@@ -423,6 +423,8 @@ Los errores usan los códigos de F1, salvo `VIA_NOT_FOUND` que agrega F4. Se val
 
 ### Parada obligatoria: `via` (F4)
 
+Cambio de requisito de F4 (`CAMBIO-REQUISITO-F4`); resumen y archivos en [`cambio-requisito-f4.md`](cambio-requisito-f4.md).
+
 Con `via`, la ruta debe pasar por ese punto. Es la ruta de menor costo entre las que pasan por la parada: la mejor de origen a parada más la mejor de parada a destino (dos Dijkstra encadenados), y `total_cost_km` es la suma exacta de ambas.
 
 Entrada: `GET /shortest-path?origin=3f2b8c1e-...&destination=c7e1f0b3-...&via=e2a4b6c8-...`
