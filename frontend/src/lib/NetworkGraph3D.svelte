@@ -54,9 +54,9 @@
   {#if network.length > 0}
     <ul class="legend">
       <li><span class="sw warehouse"></span>Bodega</li>
-      <li><span class="sw pickup"></span>Punto de entrega</li>
-      <li><span class="sw oneway"></span>Sentido único (flechas azules)</li>
-      <li><span class="sw twoway"></span>Doble sentido (línea discontinua, ⇄)</li>
+      <li><span class="sw pickup"></span>Cliente (techo azul, con dirección)</li>
+      <li><span class="sw oneway"></span>Sentido único (señal UNA VÍA y flechas)</li>
+      <li><span class="sw twoway"></span>Doble sentido (línea amarilla, ⇄)</li>
       <li><span class="sw route"></span>Ruta del camión</li>
       <li><span class="sw via"></span>Parada obligatoria</li>
     </ul>
@@ -128,9 +128,9 @@
     border: 1px solid var(--border-strong);
   }
   .sw.warehouse { background: #ffffff; box-shadow: inset 0 -5px 0 #2563eb; }
-  .sw.pickup { background: #93b4f5; }
-  .sw.oneway { background: #d5ddeb; box-shadow: inset 0 0 0 4px #d5ddeb, inset 0 0 0 7px #2563eb; }
-  .sw.twoway { background: repeating-linear-gradient(90deg, #d5ddeb 0 3px, #ffffff 3px 6px); }
+  .sw.pickup { background: #2563eb; }
+  .sw.oneway { background: #111111; box-shadow: inset 0 0 0 4px #111111, inset 0 0 0 6px #ffffff; }
+  .sw.twoway { background: repeating-linear-gradient(90deg, #b9c1cf 0 3px, #facc15 3px 6px); }
   .sw.route { background: #2563eb; }
   .sw.via { background: #f97316; border-radius: 50%; }
   .hint {

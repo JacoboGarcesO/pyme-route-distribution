@@ -19,6 +19,7 @@
   let following = $state(true)
   let status = $state(null) // { phase, segment, distance, remainingKm }
   let clock = $state('')
+  let addresses = $state(new Map()) // id del cliente -> dirección en el mapa
 
   let container
   let stage, city, truck
@@ -96,6 +97,7 @@
     }
     city = createCity(network, route)
     stage.scene.add(city.group)
+    addresses = city.addresses
     truck.visible = !!city.timeline
     startTime = now
     status = null
@@ -118,14 +120,15 @@
       24 * zoom,
       truck.position.z - fz * 30 * zoom - fx * 16 * zoom,
     )
-    const k = 1 - Math.exp(-dt * 2.5)
-    stage.camera.position.lerp(desired, k)
-    stage.controls.target.lerp(truck.position, Math.min(1, k * 2))
+    // La mira va pegada al camión; la posición de la cámara lo alcanza con suavidad.
+    stage.camera.position.add(new THREE.Vector3().subVectors(truck.position, stage.controls.target))
+    stage.controls.target.copy(truck.position)
+    stage.camera.position.lerp(desired, 1 - Math.exp(-dt * 2))
   }
 
   function zoomBy(factor) {
     if (following) {
-      zoom = Math.min(3, Math.max(0.4, zoom * factor))
+      zoom = Math.min(3, Math.max(0.35, zoom * factor))
       return
     }
     const { camera, controls } = stage
@@ -257,6 +260,7 @@
       <span class="chip">{phaseLabel}</span>
       <dl>
         <div><dt>Tipo</dt><dd>{pointTypeLabel(nextPoint.type)}</dd></div>
+        {#if addresses.get(nextPoint.id)}<div><dt>Dirección</dt><dd>{addresses.get(nextPoint.id)}</dd></div>{/if}
         <div><dt>Rol en la ruta</dt><dd>{nextIndex === route.path.length - 1 ? 'Destino B' : route.path[nextIndex].id === route.via_id ? 'Parada obligatoria' : 'Paso intermedio'}</dd></div>
         <div><dt>Conexiones salientes</dt><dd>{nextPoint.connections.length}</dd></div>
         {#if nextPoint.x != null}<div><dt>Posición en el mapa</dt><dd>{nextPoint.x}, {nextPoint.y}</dd></div>{/if}
@@ -308,6 +312,7 @@
           <svg class="mini-truck" width="56" height="36" viewBox="0 0 56 36" aria-hidden="true"><rect x="2" y="6" width="32" height="20" rx="3" fill="#fff" stroke="#cbd5e1" /><rect x="2" y="18" width="32" height="4" fill="#14b8a6" /><path d="M34 12h10l8 8v6H34z" fill="#fff" stroke="#cbd5e1" /><rect x="44" y="14" width="5" height="5" fill="#1e293b" /><circle cx="12" cy="28" r="4" fill="#111827" /><circle cx="44" cy="28" r="4" fill="#111827" /></svg>
           <div>
             <strong>{route.path[0].name} → {route.path.at(-1).name}</strong>
+            {#if addresses.get(route.path.at(-1).id)}<small>Entrega en {addresses.get(route.path.at(-1).id)}</small>{/if}
             {#if hasVia}<small>Parada: {byId.get(route.via_id)?.name}</small>{/if}
             <span class="chip">{phaseLabel}</span>
             <small>{status ? `${status.remainingKm.toFixed(1)} km restantes de ${route.total_cost_km} km` : `${route.total_cost_km} km`}</small>
