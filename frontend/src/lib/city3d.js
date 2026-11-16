@@ -106,6 +106,8 @@ export function currentHour() {
   return now.getHours() + now.getMinutes() / 60
 }
 
+export const lightsOnAt = (hour) => hour >= 18 || hour < 6
+
 export function dayPart(hour) {
   return hour < 5.5 || hour >= 19 ? 'Noche' : hour < 7.5 ? 'Amanecer' : hour < 11.5 ? 'Mañana' : hour < 13 ? 'Mediodía' : hour < 17.3 ? 'Tarde' : 'Atardecer'
 }
@@ -217,7 +219,9 @@ export function createStage(container, { focusBlur = false } = {}) {
         const focus = controls.target
         sun.target.position.set(focus.x, 0, focus.z)
         if (!light || clock.elapsedTime - lightAt > 1) {
-          light = daylight(currentHour())
+          const hour = currentHour()
+          light = daylight(hour)
+          scene.userData.lightsOn = lightsOnAt(hour)
           lightAt = clock.elapsedTime
           scene.background.copy(light.sky)
           scene.fog.color.copy(light.sky)
@@ -327,7 +331,7 @@ function makeBatcher() {
       if (glow[kind]) {
         material.emissive.set(glow[kind][0])
         material.emissiveIntensity = 0
-        group.userData.nightMats.push([material, glow[kind][1]])
+        group.userData.nightMats.push([material, glow[kind][1], kind])
       }
       const mesh = new THREE.InstancedMesh(geometries[kind](), material, list.length)
       list.forEach(([color, x, y, z, sx, sy, sz, rx, ry, rz], i) => {
@@ -377,6 +381,17 @@ function canvasTexture(width, height, draw) {
   texture.colorSpace = THREE.SRGBColorSpace
   texture.anisotropy = 4
   return texture
+}
+
+function glowTexture(width, height, cx, cy, radius) {
+  return canvasTexture(width, height, (ctx) => {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius)
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(0.45, 'rgba(255,255,255,0.45)')
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, width, height)
+  })
 }
 
 function textWidth(text, font) {
@@ -768,7 +783,7 @@ const LAMP_COLORS = { r: new THREE.Color(0xff3b30), y: new THREE.Color(0xffcc00)
 
 export function createCity(network, route) {
   const group = new THREE.Group()
-  const anim = { pulses: [], bobs: [], lamps: [], walkers: [], nightMats: [] }
+  const anim = { pulses: [], bobs: [], lamps: [], walkers: [], nightMats: [], lampSpots: [] }
   group.userData = anim
   const B = makeBatcher()
   const rand = seeded(7)
@@ -916,6 +931,7 @@ export function createCity(network, route) {
         F('box', 0x475569, 0, 5.15, 0.6, 0.1, 0.1, 1.3, false)
         F('box', 0x1f2937, 0, 5.05, 1.2, 0.5, 0.15, 0.7, false)
         F('bulb', 0xfff7cc, 0, 4.96, 1.2, 0.4, 0.04, 0.55, false)
+        anim.lampSpots.push(p.clone().addScaledVector(n, -1.2)) // suelo bajo la bombilla
         if (rand() < 0.4) F('cyl', 0x15803d, 0.9, 0.55, -0.2, 0.55, 0.8, 0.55)
         if (rand() < 0.15) {
           F('cyl', 0xdc2626, -0.9, 0.5, -0.2, 0.3, 0.7, 0.3)
@@ -1054,6 +1070,20 @@ export function createCity(network, route) {
   }
 
   B.build(group)
+
+  // Charcos de luz de los postes: un disco cálido sobre el suelo, todos en una InstancedMesh.
+  if (anim.lampSpots.length) {
+    const pools = new THREE.InstancedMesh(
+      new THREE.PlaneGeometry(10, 10).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ map: glowTexture(128, 128, 64, 64, 64), color: 0xffcf7a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }),
+      anim.lampSpots.length,
+    )
+    const m = new THREE.Matrix4()
+    anim.lampSpots.forEach((spot, i) => pools.setMatrixAt(i, m.makeTranslation(spot.x, 0.33, spot.z)))
+    pools.visible = false
+    anim.pools = pools
+    group.add(pools)
+  }
 
   // Todas las luces de semáforo en una sola InstancedMesh; su color cambia cada cuadro.
   if (anim.lamps.length) {
@@ -1201,9 +1231,11 @@ function timeline(route, points) {
 // `focus` (opcional): los peatones lejos de la zona nítida no se animan ni se dibujan.
 export function animateCity(group, time, focus = null) {
   const { pulses = [], bobs = [], lamps = [], walkers = [], lampMesh, nightMats = [] } = group.userData
-  // Ventanas y postes se encienden al caer la noche (la escena guarda cuánto es de noche).
+  // Las ventanas se encienden poco a poco al oscurecer; los postes, de 6 p. m. a 6 a. m.
   const night = group.parent?.userData.night ?? 0
-  for (const [material, strength] of nightMats) material.emissiveIntensity = night * strength
+  const lightsOn = !!group.parent?.userData.lightsOn
+  for (const [material, strength, kind] of nightMats) material.emissiveIntensity = (kind === 'bulb' ? Number(lightsOn) : night) * strength
+  if (group.userData.pools) group.userData.pools.visible = lightsOn
   for (const o of pulses) o.scale.setScalar(1 + Math.sin(time * 4) * 0.12)
   for (const o of bobs) o.position.y = o.userData.baseY + Math.sin(time * 3) * 0.3
   if (lampMesh) {
@@ -1245,12 +1277,14 @@ function truckLogo() {
 
 export function makeTruck() {
   const g = new THREE.Group()
-  const part = (w, h, d, color, x, y, z, basic = false) => {
-    const material = basic ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshStandardMaterial({ color, roughness: 0.55 })
+  const part = (w, h, d, color, x, y, z, glow = null) => {
+    const material = new THREE.MeshStandardMaterial({ color, roughness: 0.55 })
+    if (glow) material.emissive.set(glow)
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material)
     mesh.position.set(x, y, z)
     mesh.castShadow = true
     g.add(mesh)
+    return mesh
   }
   part(5.4, 0.4, 2.1, 0x1f2937, 0.3, 0.6, 0) // chasis
   part(4.2, 2.6, 2.4, 0xffffff, -0.5, 2.1, 0) // caja de carga
@@ -1262,10 +1296,19 @@ export function makeTruck() {
   part(1, 0.7, 0.05, 0x1e293b, 2.5, 2.35, -1.16)
   part(0.2, 0.35, 2.3, 0x9ca3af, 3.5, 0.75, 0) // parachoques
   part(0.06, 0.5, 1.2, 0x374151, 3.43, 1.25, 0) // rejilla
-  part(0.06, 0.25, 0.4, 0xfff7cc, 3.44, 1.3, 0.85, true) // farolas
-  part(0.06, 0.25, 0.4, 0xfff7cc, 3.44, 1.3, -0.85, true)
-  part(0.06, 0.2, 0.3, 0xef4444, -2.65, 0.9, 0.9, true) // stops
-  part(0.06, 0.2, 0.3, 0xef4444, -2.65, 0.9, -0.9, true)
+  const heads = [0.85, -0.85].map((z) => part(0.06, 0.25, 0.4, 0xfff7cc, 3.44, 1.3, z, 0xfff1c8)) // farolas
+  const tails = [0.9, -0.9].map((z) => part(0.06, 0.2, 0.3, 0xb91c1c, -2.65, 0.9, z, 0xff2d2d)) // stops
+  // Foco real que alumbra el camino y un haz suave pintado en el suelo.
+  const spot = new THREE.SpotLight(0xfff1c8, 120, 50, 0.6, 0.6, 1.4)
+  spot.position.set(3.5, 1.3, 0)
+  spot.target.position.set(14, 0, 0)
+  const beam = new THREE.Mesh(
+    new THREE.PlaneGeometry(16, 6).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ map: glowTexture(256, 96, 0, 48, 256), color: 0xfff1c8, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }),
+  )
+  beam.position.set(11.5, 0.3, 0)
+  g.add(spot, spot.target, beam)
+  g.userData.lights = { heads, tails, spot, beam, on: null }
   part(0.15, 0.4, 0.1, 0x111827, 3.1, 2.4, 1.3) // espejos
   part(0.15, 0.4, 0.1, 0x111827, 3.1, 2.4, -1.3)
   const logoMat = new THREE.MeshStandardMaterial({ map: truckLogo() })
@@ -1435,6 +1478,15 @@ export function animateCrew(crew, run, truck, time) {
 
 // Coloca el camión girando suavemente hacia el rumbo nuevo.
 export function placeTruck(truck, state, dt) {
+  // Luces del camión encendidas de 6 p. m. a 6 a. m. (lo decide la escena según la hora).
+  const lights = truck.userData.lights
+  const on = !!truck.parent?.userData.lightsOn
+  if (lights && lights.on !== on) {
+    lights.on = on
+    lights.spot.visible = lights.beam.visible = on
+    for (const m of lights.heads) m.material.emissiveIntensity = on ? 2.5 : 0.15
+    for (const m of lights.tails) m.material.emissiveIntensity = on ? 1.6 : 0.25
+  }
   truck.position.copy(state.position)
   let diff = state.heading - truck.rotation.y
   diff = Math.atan2(Math.sin(diff), Math.cos(diff))
