@@ -4,7 +4,7 @@
   import { onMount } from 'svelte'
   import * as THREE from 'three'
   import { getNetwork, getShortestPath } from './api.js'
-  import { animateCity, animateCrew, createCity, createStage, disposeObject, makeTruck, placeTruck, createRun, stepTruck } from './city3d.js'
+  import { animateCity, animateCrew, currentHour, dayPart, createCity, createStage, disposeObject, makeTruck, placeTruck, createRun, stepTruck } from './city3d.js'
   import ErrorMessage from './ErrorMessage.svelte'
   import { pointTypeLabel } from './pointTypes.js'
 
@@ -165,7 +165,13 @@
     })
     loadNetwork()
 
-    const tickClock = () => (clock = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }))
+    // La misma hora que ilumina la escena (o la simulada con ?hora=).
+    const tickClock = () => {
+      const hour = currentHour()
+      const at = new Date()
+      at.setHours(Math.floor(hour), Math.round((hour % 1) * 60))
+      clock = `${at.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · ${dayPart(hour)}`
+    }
     tickClock()
     const timer = setInterval(tickClock, 10000)
     return () => {

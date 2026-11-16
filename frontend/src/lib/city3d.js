@@ -84,6 +84,49 @@ const blurShader = {
     }`,
 }
 
+// Luz según la hora local: [hora, cielo, luz ambiente, sol o luna, color del sol, noche 0..1].
+const DAY_KEYS = [
+  [0, 0x0b1026, 0.45, 0.35, 0x8fa6ff, 1],
+  [5.2, 0x151b3d, 0.5, 0.35, 0x8fa6ff, 1],
+  [6.2, 0xf4b98f, 1, 0.75, 0xffb070, 0.45],
+  [7.5, 0xdfe8f5, 1.55, 1.25, 0xfff1d6, 0],
+  [12, 0xeef2f8, 1.8, 1.5, 0xffffff, 0],
+  [16.5, 0xe8ebf3, 1.7, 1.4, 0xfff4e0, 0],
+  [17.7, 0xf2a477, 1.05, 0.85, 0xff9a5c, 0.3],
+  [18.6, 0x3a3566, 0.6, 0.4, 0x9a8cff, 0.85],
+  [19.4, 0x0b1026, 0.45, 0.35, 0x8fa6ff, 1],
+  [24, 0x0b1026, 0.45, 0.35, 0x8fa6ff, 1],
+]
+
+// Hora actual en horas decimales. `?hora=21` en la URL la simula (para demos).
+export function currentHour() {
+  const forced = Number(new URLSearchParams(window.location.search).get('hora'))
+  if (window.location.search.includes('hora=') && forced >= 0 && forced < 24) return forced
+  const now = new Date()
+  return now.getHours() + now.getMinutes() / 60
+}
+
+export function dayPart(hour) {
+  return hour < 5.5 || hour >= 19 ? 'Noche' : hour < 7.5 ? 'Amanecer' : hour < 11.5 ? 'Mañana' : hour < 13 ? 'Mediodía' : hour < 17.3 ? 'Tarde' : 'Atardecer'
+}
+
+function daylight(hour) {
+  const i = DAY_KEYS.findIndex(([h], k) => hour >= h && hour < DAY_KEYS[k + 1][0])
+  const [h0, sky0, amb0, sun0, col0, night0] = DAY_KEYS[i]
+  const [h1, sky1, amb1, sun1, col1, night1] = DAY_KEYS[i + 1]
+  const t = (hour - h0) / (h1 - h0)
+  const mix = (a, b) => new THREE.Color(a).lerp(new THREE.Color(b), t)
+  return {
+    sky: mix(sky0, sky1),
+    ambient: amb0 + (amb1 - amb0) * t,
+    sun: sun0 + (sun1 - sun0) * t,
+    sunColor: mix(col0, col1),
+    night: night0 + (night1 - night0) * t,
+    // De día el sol va de oriente (+x) a occidente; de noche la luna queda alta.
+    angle: hour >= 6 && hour <= 18 ? (Math.PI * (hour - 6)) / 12 : null,
+  }
+}
+
 export function createStage(container, { focusBlur = false } = {}) {
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0xeef2f8)
@@ -102,7 +145,8 @@ export function createStage(container, { focusBlur = false } = {}) {
   controls.minDistance = 8
   controls.maxDistance = 360
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c4dc, 1.8))
+  const ambient = new THREE.HemisphereLight(0xffffff, 0xb8c4dc, 1.8)
+  scene.add(ambient)
   const sun = new THREE.DirectionalLight(0xffffff, 1.5)
   sun.castShadow = true
   Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, far: 400 })
@@ -162,6 +206,8 @@ export function createStage(container, { focusBlur = false } = {}) {
     controls,
     start(tick) {
       const clock = new THREE.Clock()
+      let light = null
+      let lightAt = 0
       const loop = () => {
         frame = requestAnimationFrame(loop)
         const dt = Math.min(clock.getDelta(), 0.1)
@@ -170,7 +216,20 @@ export function createStage(container, { focusBlur = false } = {}) {
         // La sombra sigue a la mira para que la zona visible siempre la tenga.
         const focus = controls.target
         sun.target.position.set(focus.x, 0, focus.z)
-        sun.position.set(focus.x + 50, 110, focus.z + 40)
+        if (!light || clock.elapsedTime - lightAt > 1) {
+          light = daylight(currentHour())
+          lightAt = clock.elapsedTime
+          scene.background.copy(light.sky)
+          scene.fog.color.copy(light.sky)
+          ambient.intensity = light.ambient
+          // La luz ambiente toma el tono del cielo (naranja al atardecer) y se azula de noche.
+          ambient.color.set(0xffffff).lerp(light.sky, 0.45).lerp(new THREE.Color(0x8fa6ff), light.night * 0.6)
+          sun.intensity = light.sun
+          sun.color.copy(light.sunColor)
+          scene.userData.night = light.night
+        }
+        if (light.angle === null) sun.position.set(focus.x - 45, 95, focus.z - 35)
+        else sun.position.set(focus.x + Math.cos(light.angle) * 95, Math.sin(light.angle) * 105 + 10, focus.z + 40)
         if (post) {
           post.material.uniforms.focus.value.set(focus.x, focus.z)
           renderer.setRenderTarget(target)
@@ -238,7 +297,11 @@ function makeBatcher() {
     cyl: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
     cone: () => new THREE.ConeGeometry(0.5, 1, 10),
     tri: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 3),
+    glass: () => new THREE.BoxGeometry(1, 1, 1),
+    bulb: () => new THREE.BoxGeometry(1, 1, 1),
   }
+  // Brillo nocturno de cada tipo: ventanas cálidas y bombillas más intensas.
+  const glow = { glass: [0xffcf7a, 0.85], bulb: [0xfff1b8, 2.2] }
   const add = (kind, color, x, y, z, sx, sy, sz, ry = 0, shadow = true, rx = 0, rz = 0) => {
     const key = `${kind}:${shadow}`
     if (!items.has(key)) items.set(key, [])
@@ -260,7 +323,13 @@ function makeBatcher() {
     const c = new THREE.Color()
     for (const [key, list] of items) {
       const [kind, shadow] = key.split(':')
-      const mesh = new THREE.InstancedMesh(geometries[kind](), new THREE.MeshStandardMaterial({ roughness: 0.8 }), list.length)
+      const material = new THREE.MeshStandardMaterial({ roughness: glow[kind] ? 0.3 : 0.8 })
+      if (glow[kind]) {
+        material.emissive.set(glow[kind][0])
+        material.emissiveIntensity = 0
+        group.userData.nightMats.push([material, glow[kind][1]])
+      }
+      const mesh = new THREE.InstancedMesh(geometries[kind](), material, list.length)
       list.forEach(([color, x, y, z, sx, sy, sz, rx, ry, rz], i) => {
         mesh.setMatrixAt(i, m.compose(p.set(x, y, z), q.setFromEuler(e.set(rx, ry, rz)), s.set(sx, sy, sz)))
         mesh.setColorAt(i, c.set(color))
@@ -470,7 +539,7 @@ function tree(L, lx, lz, rand, s = 1) {
 
 function windowAt(L, x, y, z, w = 0.9, h = 0.8) {
   L('box', WHITE, x, y, z, w + 0.25, h + 0.25, 0.05, false)
-  L('box', 0x9cc3f0, x, y, z + 0.03, w, h, 0.05, false)
+  L('glass', 0x9cc3f0, x, y, z + 0.03, w, h, 0.05, false)
   L('box', WHITE, x, y, z + 0.06, 0.06, h, 0.03, false)
   L('box', WHITE, x, y - h / 2 - 0.12, z + 0.1, w + 0.35, 0.08, 0.22, false)
 }
@@ -500,8 +569,8 @@ function house(L, rand, wall, roof) {
   L('box', 0xd6d3d1, 0, 0.2, 2.85, 1.6, 0.2, 0.6, false)
   windowAt(L, -1.6, 1.95, 2.52)
   windowAt(L, 1.6, 1.95, 2.52)
-  L('box', 0x9cc3f0, 2.53, 1.95, 0, 0.05, 0.8, 1, false)
-  L('box', 0x9cc3f0, -2.53, 1.95, 0, 0.05, 0.8, 1, false)
+  L('glass', 0x9cc3f0, 2.53, 1.95, 0, 0.05, 0.8, 1, false)
+  L('glass', 0x9cc3f0, -2.53, 1.95, 0, 0.05, 0.8, 1, false)
   frontYard(L, rand)
 }
 
@@ -516,7 +585,7 @@ function townhouse(L, rand, wall) {
   L('box', 0x334155, 1.3, 3.6, 3.3, 2.4, 0.15, 1.2)
   L('box', 0x334155, 1.3, 4.05, 3.85, 2.4, 0.06, 0.06, false)
   for (const x of [0.2, 0.8, 1.4, 2, 2.4]) L('box', 0x334155, x, 3.8, 3.85, 0.05, 0.5, 0.05, false)
-  L('box', 0x9cc3f0, 1.3, 4.5, 2.73, 1.2, 1.6, 0.05, false)
+  L('glass', 0x9cc3f0, 1.3, 4.5, 2.73, 1.2, 1.6, 0.05, false)
   L('box', pick(rand, DOORS), 0, 1.05, 2.74, 1, 1.9, 0.05, false)
   L('box', 0x475569, 0, 2.2, 3.1, 1.6, 0.12, 0.8) // alero de la puerta
   L('box', 0xe5e7eb, 2.85, 2.4, -1, 0.5, 0.6, 0.9) // aire acondicionado
@@ -532,13 +601,13 @@ function apartment(L, rand) {
   for (const x of [-2.9, 2.9]) L('box', 0xcbd5e1, x, h / 2, 2.9, 0.3, h, 0.3, false) // columnas
   for (let f = 0; f < floors; f++) {
     const y = 1.6 + f * 2.7
-    L('box', 0x93c5fd, 0, y, 2.93, 4.8, 1, 0.08, false)
+    L('glass', 0x93c5fd, 0, y, 2.93, 4.8, 1, 0.08, false)
     L('box', 0xcbd5e1, 0, y - 0.65, 2.95, 5.6, 0.12, 0.12, false)
     if (f > 0 && (f + Math.floor(rand() * 2)) % 2) {
       L('box', 0x64748b, -1.3, y - 0.8, 3.4, 2, 0.12, 1)
       L('box', 0x94a3b8, -1.3, y - 0.45, 3.88, 2, 0.6, 0.05, false)
     }
-    L('box', 0x93c5fd, 2.93, y, 0, 0.08, 1, 4, false)
+    L('glass', 0x93c5fd, 2.93, y, 0, 0.08, 1, 4, false)
   }
   L('box', 0x334155, 0, 2.2, 3.4, 2.2, 0.15, 1.2) // marquesina de la entrada
   L('box', 0x1e293b, 0, 1, 2.95, 1.6, 2, 0.06, false)
@@ -553,7 +622,7 @@ function shop(L, rand) {
   L('box', 0xd6d3d1, 0, 0.15, 0, 6, 0.3, 5.2)
   L('box', wall, 0, 2, 0, 5.8, 3.7, 5)
   L('box', 0x334155, 0, 1.35, 2.5, 4.9, 2.1, 0.06, false)
-  L('box', 0xbfdbfe, -0.6, 1.35, 2.54, 3.4, 1.8, 0.05, false)
+  L('glass', 0xbfdbfe, -0.6, 1.35, 2.54, 3.4, 1.8, 0.05, false)
   L('box', 0x475569, 1.7, 1.2, 2.54, 0.9, 1.9, 0.05, false)
   // Toldo a rayas.
   for (let i = 0; i < 6; i++) {
@@ -601,7 +670,7 @@ function warehouseMesh(B, site, front, name) {
     for (let y = 0.6; y < 3.4; y += 0.45) L('box', 0x1d4ed8, x, y, 3.09, 2.6, 0.05, 0.03, false)
   }
   L('box', 0x94a3b8, 0, 0.6, 3.7, 13, 1, 1.4) // andén de carga
-  for (const x of [-4.5, 0, 4.5]) L('box', 0x93c5fd, x, 6.3, -1.5, 2, 0.3, 6, false) // claraboyas
+  for (const x of [-4.5, 0, 4.5]) L('glass', 0x93c5fd, x, 6.3, -1.5, 2, 0.3, 6, false) // claraboyas
   // Estibas con cajas en el patio.
   for (const [x, z] of [[-6.5, 6], [-5, 6.4], [6, 6.2]]) {
     L('box', 0xa16207, x, 0.25, z, 1.3, 0.2, 1.3)
@@ -699,7 +768,7 @@ const LAMP_COLORS = { r: new THREE.Color(0xff3b30), y: new THREE.Color(0xffcc00)
 
 export function createCity(network, route) {
   const group = new THREE.Group()
-  const anim = { pulses: [], bobs: [], lamps: [], walkers: [] }
+  const anim = { pulses: [], bobs: [], lamps: [], walkers: [], nightMats: [] }
   group.userData = anim
   const B = makeBatcher()
   const rand = seeded(7)
@@ -846,7 +915,7 @@ export function createCity(network, route) {
         F('cyl', 0x475569, 0, 2.6, 0, 0.16, 5.2, 0.16)
         F('box', 0x475569, 0, 5.15, 0.6, 0.1, 0.1, 1.3, false)
         F('box', 0x1f2937, 0, 5.05, 1.2, 0.5, 0.15, 0.7, false)
-        F('box', 0xfff7cc, 0, 4.96, 1.2, 0.4, 0.04, 0.55, false)
+        F('bulb', 0xfff7cc, 0, 4.96, 1.2, 0.4, 0.04, 0.55, false)
         if (rand() < 0.4) F('cyl', 0x15803d, 0.9, 0.55, -0.2, 0.55, 0.8, 0.55)
         if (rand() < 0.15) {
           F('cyl', 0xdc2626, -0.9, 0.5, -0.2, 0.3, 0.7, 0.3)
@@ -1131,7 +1200,10 @@ function timeline(route, points) {
 
 // `focus` (opcional): los peatones lejos de la zona nítida no se animan ni se dibujan.
 export function animateCity(group, time, focus = null) {
-  const { pulses = [], bobs = [], lamps = [], walkers = [], lampMesh } = group.userData
+  const { pulses = [], bobs = [], lamps = [], walkers = [], lampMesh, nightMats = [] } = group.userData
+  // Ventanas y postes se encienden al caer la noche (la escena guarda cuánto es de noche).
+  const night = group.parent?.userData.night ?? 0
+  for (const [material, strength] of nightMats) material.emissiveIntensity = night * strength
   for (const o of pulses) o.scale.setScalar(1 + Math.sin(time * 4) * 0.12)
   for (const o of bobs) o.position.y = o.userData.baseY + Math.sin(time * 3) * 0.3
   if (lampMesh) {
