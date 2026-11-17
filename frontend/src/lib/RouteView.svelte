@@ -4,7 +4,7 @@
   import { pointTypeLabel } from './pointTypes.js'
   import RouteSelectors from './RouteSelectors.svelte'
 
-  let { points, onResult = () => {} } = $props()
+  let { points, version = 0, onResult = () => {} } = $props()
 
   let loading = $state(false)
   let error = $state(null)
@@ -17,6 +17,12 @@
   function pointName(id) {
     return pathById.get(id)?.name ?? id
   }
+
+  $effect(() => {
+    version
+    result = null
+    error = null
+  })
 
   async function search(originId, destinationId, viaId) {
     loading = true
