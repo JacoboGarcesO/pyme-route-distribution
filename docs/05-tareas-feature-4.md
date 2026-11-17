@@ -51,15 +51,15 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 1 — Cambio de requisito
 
-### [x] T04 · [DECISIÓN] Registrar la solicitud de cambio y su impacto (45 min) · **Jose**
+### [ ] T04 · [DECISIÓN] Registrar la solicitud de cambio y su impacto (45 min) · **Jose**
 - **Entregable:** sección en `docs/diseno.md` con el cambio comunicado por el docente, qué módulos toca (grafo, algoritmo, API, interfaz, pruebas) y su costo estimado.
 - **Hecho cuando:** el impacto queda escrito antes de tocar el código.
 
-### [x] T05 · [DECISIÓN] Ajustar backlog y alcance (30 min) · **Jose**
+### [ ] T05 · [DECISIÓN] Ajustar backlog y alcance (30 min) · **Jose**
 - **Entregable:** tareas nuevas o modificadas en este plan, y qué queda fuera, con justificación.
 - **Hecho cuando:** ninguna funcionalidad extra queda sin costo y valor justificados.
 
-### [x] T06 · [DECISIÓN] Definir "costo inválido" y respuestas (30 min) · **Jose**
+### [ ] T06 · [DECISIÓN] Definir "costo inválido" y respuestas (30 min) · **Jose**
 - **Entregable:** reglas y código de error para costo cero, negativo, no numérico y ausente, alineadas con `InvalidCost`.
 - **Hecho cuando:** cada caso tiene código HTTP, código de error y mensaje.
 
@@ -77,7 +77,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 2 — Datos para visualizar
 
-### [x] T10 · [DECISIÓN] Cómo se dibuja la red (30 min) · **Jose**
+### [ ] T10 · [DECISIÓN] Cómo se dibuja la red (30 min) · **Jose**
 - **Entregable:** decisión en `docs/diseno.md`: SVG propio o imagen de NetworkX, de dónde salen las posiciones de los puntos y cómo se marca una ruta.
 - **Hecho cuando:** se explica que el dibujo usa solo datos calculados por el backend.
 - **Nota:** existe la rama `feat-4/network-map` con posiciones `x, y`; evaluar si se rescata.
@@ -114,35 +114,35 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 - **Entregable:** `acceptance/scripts/acceptance_feature_4.py` reutilizando el reporte común; escenario: red pequeña, cobertura y ruta.
 - **Hecho cuando:** comprueba secuencia y costo mínimo.
 
-### [x] T18 · Escenarios de ruta inexistente y nodo inexistente (45 min) · **Jose**
+### [ ] T18 · Escenarios de ruta inexistente y nodo inexistente (45 min) · **Jose**
 - **Hecho cuando:** distingue una ruta inexistente de un nodo inexistente y de una respuesta exitosa.
 
-### [x] T19 · Escenario de costo inválido (45 min) · **Jose**
+### [ ] T19 · Escenario de costo inválido (45 min) · **Jose**
 - **Hecho cuando:** comprueba códigos y mensajes definidos en T06.
 
-### [x] T20 · Escenario del cambio de requisito (45 min) · **Jose**
+### [ ] T20 · Escenario del cambio de requisito (45 min) · **Jose**
 - **Hecho cuando:** demuestra el comportamiento nuevo de T07–T09.
 
-### [x] T21 · Ejecutar y guardar evidencia (30 min) · **Jose**
+### [ ] T21 · Ejecutar y guardar evidencia (30 min) · **Jose**
 - **Entregable:** salida completa en `docs/evidencia-f4.txt`.
 - **Hecho cuando:** corre desde un estado limpio sin intervención manual.
 
-### [~] T22 · Verificación cruzada con la interfaz real (45 min) · **Jose**
+### [ ] T22 · Verificación cruzada con la interfaz real (45 min) · **Jose**
 - **Entregable:** recorrido del flujo completo del cliente en el navegador, con notas de lo encontrado.
 - **Hecho cuando:** se comprueba el criterio de éxito del cliente de punta a punta.
 
 ## Bloque 5 — Cierre
 
-### [x] T23 · Actualizar README (45 min) · **Jose**
+### [ ] T23 · Actualizar README (45 min) · **Jose**
 - **Entregable:** propósito de F4, ejecución, ejemplo de demo y decisiones, incluido el cambio de requisito.
 
 ### [ ] T24 · Actualizar bitácora de IA (45 min por persona) · **Todos**
 - **Entregable:** una fila por decisión o pieza desarrollada con apoyo de IA, con verificación propia.
 
-### [x] T25 · Preparar video de respaldo (60 min) · **Jose**
+### [ ] T25 · Preparar video de respaldo (60 min) · **Jose**
 - **Entregable:** video de máximo 3 minutos con la red dibujada, cobertura, ruta y un error.
 
-### [x] T26 · Preparar el pitch (60 min) · **Jose**
+### [ ] T26 · Preparar el pitch (60 min) · **Jose**
 - **Entregable:** guion con problema, grafo, algoritmos, visualización, cambio de requisito, pruebas y aportes.
 
 ### [ ] T27 · Pull request, revisión, tag y coevaluación (45 min) · **Jose** (coevaluación: **Todos**)

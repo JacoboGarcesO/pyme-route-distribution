@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import sys
 from decimal import Decimal
-from urllib.parse import urlencode
 
 from acceptance_feature_3 import (
     create_connection,
@@ -22,32 +21,6 @@ from acceptance_feature_3 import (
     run_scenario,
     shortest_path,
 )
-
-
-def coverage(origin: str, destination: str | None = None):
-    path = f"/coverage?origin={origin}"
-    if destination is not None:
-        path += f"&destination={destination}"
-    return request("GET", path)
-
-
-def shortest_path_f4(origin: str, destination: str, via: str | None = None):
-    query = {"origin": origin, "destination": destination}
-    if via is not None:
-        query["via"] = via
-    return request("GET", f"/shortest-path?{urlencode(query)}")
-
-
-def error_code(response) -> str | None:
-    if isinstance(response.body, dict):
-        error = response.body.get("error", {})
-        if isinstance(error, dict):
-            return error.get("code")
-    return None
-
-
-def has_error(response, status: int, code: str) -> bool:
-    return response.status == status and error_code(response) == code
 
 
 def create_point(name: str, point_type: str, x: float, y: float):
@@ -86,7 +59,6 @@ def main() -> int:
             lambda rs: all(created(r) for r in rs),
         )
     )
-
     if not all(created(r) for r in point_responses):
         print("\nNo se pueden ejecutar los escenarios restantes: la API no creó los puntos base.")
         print("Inicia el backend sin semilla y vuelve a ejecutar el script.")
@@ -105,69 +77,6 @@ def main() -> int:
             "HTTP 201 para la directa de 9 km y los tramos de 3, 2 y 2 km",
             lambda: connection_responses,
             lambda rs: all(r.status == 201 for r in rs),
-        )
-    )
-
-    # T18: a business answer (no route) is different from an invalid point.
-    no_route = shortest_path(house_id, warehouse_id)
-    results.append(
-        run_scenario(
-            "T18 - ruta inexistente",
-            "HTTP 200 con found false, no un error HTTP",
-            lambda: no_route,
-            lambda r: r.status == 200 and r.body.get("found") is False,
-        )
-    )
-    missing_point = shortest_path(warehouse_id, "00000000-0000-0000-0000-000000000000")
-    results.append(
-        run_scenario(
-            "T18 - nodo inexistente",
-            "HTTP 404 DESTINATION_NOT_FOUND",
-            lambda: missing_point,
-            lambda r: has_error(r, 404, "DESTINATION_NOT_FOUND"),
-        )
-    )
-
-    # T19: invalid costs are rejected before a connection changes the graph.
-    invalid_costs = (
-        create_connection(warehouse_id, isolated_id, "0"),
-        create_connection(warehouse_id, isolated_id, "-1"),
-        create_connection(warehouse_id, isolated_id, "abc"),
-        request("POST", "/connections", {"origin_id": warehouse_id, "destination_id": isolated_id}),
-    )
-    results.append(
-        run_scenario(
-            "T19 - costos inválidos",
-            "Cero/negativo: 422; no numérico: 400; ausente: 400",
-            lambda: invalid_costs,
-            lambda rs: has_error(rs[0], 422, "NON_POSITIVE_COST")
-            and has_error(rs[1], 422, "NON_POSITIVE_COST")
-            and has_error(rs[2], 400, "INVALID_COST")
-            and has_error(rs[3], 400, "MISSING_DATA"),
-        )
-    )
-
-    # T20: F4's controlled change, an obligatory stop via=<id>.
-    via_route = shortest_path_f4(warehouse_id, house_id, center_id)
-    results.append(
-        run_scenario(
-            "T20 - parada obligatoria",
-            "HTTP 200, la ruta incluye Barrio Centro y mantiene costo exacto 7",
-            lambda: via_route,
-            lambda r: r.status == 200
-            and r.body.get("found") is True
-            and route_names(r) == ["Bodega de aceptación", "Barrio Norte", "Barrio Centro", "Casa A"]
-            and r.body.get("via_id") == center_id
-            and r.body.get("total_cost_km") == "7",
-        )
-    )
-    invalid_via = shortest_path_f4(warehouse_id, house_id, "00000000-0000-0000-0000-000000000000")
-    results.append(
-        run_scenario(
-            "T20 - parada inexistente",
-            "HTTP 404 VIA_NOT_FOUND",
-            lambda: invalid_via,
-            lambda r: has_error(r, 404, "VIA_NOT_FOUND"),
         )
     )
 
