@@ -8,6 +8,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 export const SCALE = 28
 const BLUE = 0x2563eb
 const ORANGE = 0xf97316
+const GREEN = 0x16a34a
+const RED = 0xdc2626
 const ASPHALT = 0xb9c1cf
 const SIDEWALK = 0xe3e7ef
 const WHITE = 0xffffff
@@ -781,7 +783,7 @@ const LAMP_COLORS = { r: new THREE.Color(0xff3b30), y: new THREE.Color(0xffcc00)
 
 // ---------- Ciudad ----------
 
-export function createCity(network, route) {
+export function createCity(network, route, coverage = null) {
   const group = new THREE.Group()
   const anim = { pulses: [], bobs: [], lamps: [], walkers: [], nightMats: [], lampSpots: [] }
   group.userData = anim
@@ -1163,6 +1165,36 @@ export function createCity(network, route) {
       ring.position.copy(tl.points[tl.stopIndex]).setY(0.35)
       anim.pulses.push(ring)
       group.add(ring)
+    }
+  }
+
+  // Cobertura (T15): verde lo que alcanza el origen, rojo lo que no; el origen lleva su marcador.
+  if (coverage && pos.has(coverage.origin_id)) {
+    const markerAt = (id) => addresses.get(id)?.site ?? sites.get(id)?.site ?? pos.get(id)
+    const reached = Array.isArray(coverage.reachable)
+      ? new Set(coverage.reachable.map((p) => p.id))
+      : new Set(coverage.reachable ? [coverage.destination_id] : [])
+    const checked = Array.isArray(coverage.reachable)
+      ? network.map((p) => p.id).filter((id) => id !== coverage.origin_id)
+      : [coverage.destination_id]
+    const ringMats = new Map([GREEN, RED].map((c) => [c, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85 })]))
+    const origin = pin(BLUE, 'Origen')
+    origin.position.copy(markerAt(coverage.origin_id)).setY(sites.has(coverage.origin_id) ? 13 : 10)
+    origin.userData.baseY = origin.position.y
+    anim.bobs.push(origin)
+    group.add(origin)
+    for (const id of checked) {
+      if (!pos.has(id)) continue
+      const color = reached.has(id) ? GREEN : RED
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.32, 12, 48), ringMats.get(color))
+      ring.rotation.x = Math.PI / 2
+      ring.position.copy(markerAt(id)).setY(0.4)
+      group.add(ring)
+      // Las esquinas solo llevan anillo; el texto va en casas, bodegas y puntos sin camino.
+      if (reached.has(id) && byId.get(id)?.type === 'neighborhood') continue
+      const tag = pinLabel(reached.has(id) ? 'Alcanzable' : 'Sin camino', color)
+      tag.position.copy(markerAt(id)).setY(sites.has(id) ? 11 : 8)
+      group.add(tag)
     }
   }
 
