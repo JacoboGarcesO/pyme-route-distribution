@@ -55,8 +55,13 @@
             <p><strong>No hay ruta entre estos puntos.</strong></p>
             <p>{result.reason}</p>
             <p class="hint">
-              Las conexiones tienen sentido: revisa que exista un camino que salga del origen
-              y llegue al destino en esa dirección.
+              {#if result.via_id}
+                Con parada, la ruta necesita dos tramos: del origen a la parada y de la parada al
+                destino. Revisa que ambos existan en el sentido de las conexiones, o consulta sin parada.
+              {:else}
+                Las conexiones tienen sentido: revisa que exista un camino que salga del origen
+                y llegue al destino en esa dirección.
+              {/if}
             </p>
           </div>
         {:else if hops === 0}

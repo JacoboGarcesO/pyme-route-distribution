@@ -4,7 +4,7 @@
   let { error } = $props()
 
   const HINTS = {
-    INVALID_COST: 'Escribe la distancia con punto decimal, por ejemplo 2.5.',
+    INVALID_COST: 'El costo no es un número válido: escribe la distancia en km con punto decimal, por ejemplo 2.5.',
     NON_POSITIVE_COST: 'La distancia en km debe ser mayor que 0.',
     COST_PRECISION: 'Usa como máximo 7 decimales.',
     SELF_LOOP: 'Elige un destino distinto del origen.',
@@ -12,6 +12,11 @@
     DUPLICATE_CONNECTION: 'Esa conexión ya está registrada en ese sentido.',
     ORIGIN_NOT_FOUND: 'Actualiza la lista de puntos y vuelve a elegir el origen.',
     DESTINATION_NOT_FOUND: 'Actualiza la lista de puntos y vuelve a elegir el destino.',
+    VIA_NOT_FOUND: 'La parada ya no existe: actualiza la lista de puntos y vuelve a elegirla, o consulta sin parada.',
+    POINT_NOT_FOUND: 'Uno de los puntos ya no existe: actualiza la lista de puntos y vuelve a elegirlo.',
+    INVALID_NAME: 'Escribe un nombre para el punto.',
+    INVALID_TYPE: 'Elige un tipo de punto de la lista.',
+    INVALID_POSITION: 'La posición debe tener x e y, y ambas deben ser números.',
     MISSING_DATA: 'Completa los datos obligatorios y vuelve a intentarlo.',
     NETWORK_ERROR: 'Inicia el backend y vuelve a intentarlo.',
   }
@@ -24,6 +29,9 @@
       <p class="message">{error.message}</p>
       {#if HINTS[error.code]}
         <p class="hint">{HINTS[error.code]}</p>
+      {/if}
+      {#if error.status && error.code !== 'NETWORK_ERROR'}
+        <p class="code">Código {error.code} · HTTP {error.status}</p>
       {/if}
     </div>
   </div>
@@ -56,6 +64,14 @@
     font-weight: 700;
     color: var(--error);
     overflow-wrap: anywhere;
+  }
+  .code {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #991b1b;
+    opacity: 0.8;
   }
   .hint {
     margin-top: 3px;
