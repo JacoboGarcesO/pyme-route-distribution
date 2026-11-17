@@ -88,7 +88,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 3 — Interfaz
 
-### [ ] T12 · Integrar configuración, cobertura y ruta en una pantalla (60 min) · **Carolina**
+### [x] T12 · Integrar configuración, cobertura y ruta en una pantalla (60 min) · **Carolina**
 - **Entregable:** `App.svelte` con las tres operaciones y un único refresco de datos.
 - **Hecho cuando:** crear un punto o conexión actualiza selectores, lista y dibujo sin recargar.
 
@@ -96,15 +96,15 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 - **Entregable:** componente Svelte nuevo (por ejemplo `frontend/src/lib/NetworkGraph.svelte`) que dibuja los puntos y las conexiones dirigidas con su costo a partir de `GET /network`.
 - **Hecho cuando:** se distinguen conexiones de un solo sentido y de doble sentido, se ve el costo de cada una y la red vacía muestra un mensaje en lugar de un dibujo roto.
 
-### [ ] T14 · Resaltar la ruta calculada en el grafo (45 min) · **Carolina**
+### [x] T14 · Resaltar la ruta calculada en el grafo (45 min) · **Carolina**
 - **Entregable:** el resultado de `GET /shortest-path` marca puntos y tramos sobre el dibujo de T13.
 - **Hecho cuando:** el usuario ve por qué se eligió la ruta y su costo total.
 
-### [ ] T15 · Resaltar puntos alcanzables en el grafo (45 min) · **Carolina**
+### [x] T15 · Resaltar puntos alcanzables en el grafo (45 min) · **Carolina**
 - **Entregable:** el resultado de `GET /coverage` marca alcanzables y no alcanzables sobre el dibujo.
 - **Hecho cuando:** un punto aislado se ve distinto de uno alcanzable.
 
-### [ ] T16 · Mostrar errores de F4 en la interfaz (45 min) · **Carolina**
+### [x] T16 · Mostrar errores de F4 en la interfaz (45 min) · **Carolina**
 - **Entregable:** mensajes para nodo inexistente, ruta inexistente y costo inválido, según T06.
 - **Hecho cuando:** cada respuesta de error de la API tiene una representación clara.
 
