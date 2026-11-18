@@ -149,7 +149,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ### [~] T27 · Pull request, revisión, tag y coevaluación (45 min) · **Jose** (coevaluación: **Todos**)
 - **Entregable:** PR revisado y mezclado, con tag `f4`, aportes enlazados y coevaluación confidencial enviada.
-- **Estado:** `feature4` integra las ramas de todos y tiene abierto su PR hacia `main` con los aportes enlazados. Faltan la revisión, la mezcla, el tag `f4` y la coevaluación confidencial de cada integrante.
+- **Estado:** PR #155 de `feature4` a `main` mezclado, con los aportes de cada integrante enlazados, y tag `f4` sobre ese commit de mezcla. Falta la coevaluación confidencial, que envía cada integrante.
 
 ## Criterio de aceptación de la feature
 
