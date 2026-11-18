@@ -1,5 +1,5 @@
 <script>
-  // T13 (Mariana): la red de GET /network en 3D, como una ciudad de WareTrack.
+  // T13 (Mariana): la red de GET /network en 3D, como una ciudad de RutaPyme.
   // La escena vive en city3d.js; la página #/tracking la usa con cámara de seguimiento.
   import { onMount } from 'svelte'
   import { animateCity, animateCrew, createCity, createStage, disposeObject, makeTruck, placeTruck, createRun, stepTruck } from './city3d.js'

@@ -195,7 +195,7 @@
       <span class="logo" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.3L18.7 8 12 11.7 5.3 8 12 4.3Z" /></svg>
       </span>
-      WareTrack
+      RutaPyme
     </a>
 
     <form class="route-form" onsubmit={search}>

@@ -1,4 +1,4 @@
-// Escena 3D de WareTrack compartida por el mapa del panel (T13) y la página de
+// Escena 3D de RutaPyme compartida por el mapa del panel (T13) y la página de
 // seguimiento. Solo dibuja datos del backend: posiciones x, y de GET /network y
 // la ruta ya calculada por GET /shortest-path (con parada `via`, CAMBIO-REQUISITO-F4).
 // Lo demás (manzanas, aceras, semáforos, peatones) es decorado: no altera la red.
@@ -710,7 +710,7 @@ function warehouseMesh(B, site, front, name) {
     for (let z = -6; z <= 8; z += 2) L('box', 0x64748b, x, 0.9, z, 0.15, 1.8, 0.15)
   }
   // Letrero en la fachada.
-  const [texture, ratio] = boardTexture(name, 'WareTrack · Centro de distribución', '#2563eb')
+  const [texture, ratio] = boardTexture(name, 'RutaPyme · Centro de distribución', '#2563eb')
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * ratio, 1.6), new THREE.MeshStandardMaterial({ map: texture }))
   sign.position.set(0, 4.7, 3.06)
   const g = new THREE.Group()
@@ -1037,7 +1037,7 @@ export function createCity(network, route, coverage = null) {
       else house(B.frame(site, front), rand, WHITE, BLUE)
       occupied.push([site, 3.6])
       // Letrero del cliente en el antejardín, mirando a la calle.
-      const [texture, ratio] = boardTexture(point.name, address?.text ?? 'Cliente WareTrack', '#2563eb')
+      const [texture, ratio] = boardTexture(point.name, address?.text ?? 'Cliente RutaPyme', '#2563eb')
       const board = plate(texture, 0.95 * ratio, 0.95)
       const L = B.frame(site, front)
       L('cyl', 0x334155, 2.6, 0.9, 3.25, 0.1, 1.8, 0.1)
@@ -1318,7 +1318,7 @@ function truckLogo() {
     ctx.fillStyle = '#2563eb'
     ctx.font = '800 44px Plus Jakarta Sans, system-ui, sans-serif'
     ctx.textBaseline = 'middle'
-    ctx.fillText('WareTrack', 18, 46)
+    ctx.fillText('RutaPyme', 18, 46)
   })
 }
 

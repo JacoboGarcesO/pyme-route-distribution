@@ -89,7 +89,7 @@
         </svg>
       </div>
       <div>
-        <strong>WareTrack</strong>
+        <strong>RutaPyme</strong>
         <span>Logística y despacho</span>
       </div>
     </div>
@@ -228,7 +228,7 @@
       </div>
     </main>
 
-    <footer class="footer">WareTrack · Plataforma logística de despacho y cobertura de entregas</footer>
+    <footer class="footer">RutaPyme · Plataforma logística de despacho y cobertura de entregas</footer>
   </div>
 </div>
 {/if}
