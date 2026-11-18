@@ -57,6 +57,22 @@ SEED_NETWORK=1 flask --app app run
 Sin la variable, el backend arranca con la red vacía, que es lo que necesita el
 script de aceptación. Los datos viven en memoria: al reiniciar se pierden.
 
+### Ciudad ampliada de 89 puntos (opcional)
+
+Para una demostración con una ciudad más grande (8 calles por 8 carreras, dos
+bodegas y 24 direcciones entre edificios, casas y tiendas), arranca el backend
+**sin** `SEED_NETWORK` y, desde otra terminal, carga la ciudad por la API:
+
+```bash
+python backend/load_new_city.py            # carga la ciudad
+python backend/load_new_city.py --check    # solo valida los datos
+```
+
+El script no modifica el código del backend: registra los puntos y las
+conexiones con `POST /points` y `POST /connections`, y se niega a cargar si la
+red ya tiene puntos. "Casa Finca El Mirlo (vía cerrada)" no tiene conexiones a
+propósito, para mostrar una ruta inexistente.
+
 ## Ejecución del frontend
 
 Requiere Node.js. En otra terminal, con el backend en ejecución:
