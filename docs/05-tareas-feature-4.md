@@ -37,29 +37,30 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 0 — Organización
 
-### [ ] T01 · Crear la rama de la feature (20 min) · **Carolina**
+### [x] T01 · Crear la rama de la feature (20 min) · **Carolina**
 - **Entregable:** rama `feat-4/operacion-demostrable` creada desde `main` con el tag `f3`.
 - **Hecho cuando:** la rama existe y parte del tag `f3`.
+- **Nota:** el equipo integró F4 en la rama `feature4` (no `feat-4/operacion-demostrable`); `git merge-base --is-ancestor f3 feature4` confirma que parte del tag `f3`.
 
-### [ ] T02 · Registrar pitch y reparto de F4 (20 min) · **Carolina**
+### [x] T02 · Registrar pitch y reparto de F4 (20 min) · **Carolina**
 - **Entregable:** actualización de `docs/equipo.md` con responsable del pitch y tareas asignadas.
 - **Hecho cuando:** el reparto cumple las reglas de participación del curso.
 
-### [ ] T03 · Cargar el backlog en GitHub (40 min) · **Carolina**
+### [x] T03 · Cargar el backlog en GitHub (40 min) · **Carolina**
 - **Entregable:** una Issue por tarea, con bloque y responsable.
 - **Hecho cuando:** todas aparecen en el tablero.
 
 ## Bloque 1 — Cambio de requisito
 
-### [ ] T04 · [DECISIÓN] Registrar la solicitud de cambio y su impacto (45 min) · **Jose**
+### [x] T04 · [DECISIÓN] Registrar la solicitud de cambio y su impacto (45 min) · **Jose**
 - **Entregable:** sección en `docs/diseno.md` con el cambio comunicado por el docente, qué módulos toca (grafo, algoritmo, API, interfaz, pruebas) y su costo estimado.
 - **Hecho cuando:** el impacto queda escrito antes de tocar el código.
 
-### [ ] T05 · [DECISIÓN] Ajustar backlog y alcance (30 min) · **Jose**
+### [x] T05 · [DECISIÓN] Ajustar backlog y alcance (30 min) · **Jose**
 - **Entregable:** tareas nuevas o modificadas en este plan, y qué queda fuera, con justificación.
 - **Hecho cuando:** ninguna funcionalidad extra queda sin costo y valor justificados.
 
-### [ ] T06 · [DECISIÓN] Definir "costo inválido" y respuestas (30 min) · **Jose**
+### [x] T06 · [DECISIÓN] Definir "costo inválido" y respuestas (30 min) · **Jose**
 - **Entregable:** reglas y código de error para costo cero, negativo, no numérico y ausente, alineadas con `InvalidCost`.
 - **Hecho cuando:** cada caso tiene código HTTP, código de error y mensaje.
 
@@ -77,7 +78,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 2 — Datos para visualizar
 
-### [ ] T10 · [DECISIÓN] Cómo se dibuja la red (30 min) · **Jose**
+### [x] T10 · [DECISIÓN] Cómo se dibuja la red (30 min) · **Jose**
 - **Entregable:** decisión en `docs/diseno.md`: SVG propio o imagen de NetworkX, de dónde salen las posiciones de los puntos y cómo se marca una ruta.
 - **Hecho cuando:** se explica que el dibujo usa solo datos calculados por el backend.
 - **Nota:** existe la rama `feat-4/network-map` con posiciones `x, y`; evaluar si se rescata.
@@ -88,23 +89,23 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 3 — Interfaz
 
-### [ ] T12 · Integrar configuración, cobertura y ruta en una pantalla (60 min) · **Carolina**
+### [x] T12 · Integrar configuración, cobertura y ruta en una pantalla (60 min) · **Carolina**
 - **Entregable:** `App.svelte` con las tres operaciones y un único refresco de datos.
 - **Hecho cuando:** crear un punto o conexión actualiza selectores, lista y dibujo sin recargar.
 
-### [ ] T13 · Crear la interfaz que muestra la red o el grafo (60 min) · **Mariana**
+### [x] T13 · Crear la interfaz que muestra la red o el grafo (60 min) · **Mariana**
 - **Entregable:** componente Svelte nuevo (por ejemplo `frontend/src/lib/NetworkGraph.svelte`) que dibuja los puntos y las conexiones dirigidas con su costo a partir de `GET /network`.
 - **Hecho cuando:** se distinguen conexiones de un solo sentido y de doble sentido, se ve el costo de cada una y la red vacía muestra un mensaje en lugar de un dibujo roto.
 
-### [ ] T14 · Resaltar la ruta calculada en el grafo (45 min) · **Carolina**
+### [x] T14 · Resaltar la ruta calculada en el grafo (45 min) · **Carolina**
 - **Entregable:** el resultado de `GET /shortest-path` marca puntos y tramos sobre el dibujo de T13.
 - **Hecho cuando:** el usuario ve por qué se eligió la ruta y su costo total.
 
-### [ ] T15 · Resaltar puntos alcanzables en el grafo (45 min) · **Carolina**
+### [x] T15 · Resaltar puntos alcanzables en el grafo (45 min) · **Carolina**
 - **Entregable:** el resultado de `GET /coverage` marca alcanzables y no alcanzables sobre el dibujo.
 - **Hecho cuando:** un punto aislado se ve distinto de uno alcanzable.
 
-### [ ] T16 · Mostrar errores de F4 en la interfaz (45 min) · **Carolina**
+### [x] T16 · Mostrar errores de F4 en la interfaz (45 min) · **Carolina**
 - **Entregable:** mensajes para nodo inexistente, ruta inexistente y costo inválido, según T06.
 - **Hecho cuando:** cada respuesta de error de la API tiene una representación clara.
 
@@ -114,39 +115,41 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 - **Entregable:** `acceptance/scripts/acceptance_feature_4.py` reutilizando el reporte común; escenario: red pequeña, cobertura y ruta.
 - **Hecho cuando:** comprueba secuencia y costo mínimo.
 
-### [ ] T18 · Escenarios de ruta inexistente y nodo inexistente (45 min) · **Jose**
+### [x] T18 · Escenarios de ruta inexistente y nodo inexistente (45 min) · **Jose**
 - **Hecho cuando:** distingue una ruta inexistente de un nodo inexistente y de una respuesta exitosa.
 
-### [ ] T19 · Escenario de costo inválido (45 min) · **Jose**
+### [x] T19 · Escenario de costo inválido (45 min) · **Jose**
 - **Hecho cuando:** comprueba códigos y mensajes definidos en T06.
 
-### [ ] T20 · Escenario del cambio de requisito (45 min) · **Jose**
+### [x] T20 · Escenario del cambio de requisito (45 min) · **Jose**
 - **Hecho cuando:** demuestra el comportamiento nuevo de T07–T09.
 
-### [ ] T21 · Ejecutar y guardar evidencia (30 min) · **Jose**
+### [x] T21 · Ejecutar y guardar evidencia (30 min) · **Jose**
 - **Entregable:** salida completa en `docs/evidencia-f4.txt`.
 - **Hecho cuando:** corre desde un estado limpio sin intervención manual.
 
-### [ ] T22 · Verificación cruzada con la interfaz real (45 min) · **Jose**
+### [x] T22 · Verificación cruzada con la interfaz real (45 min) · **Jose**
 - **Entregable:** recorrido del flujo completo del cliente en el navegador, con notas de lo encontrado.
 - **Hecho cuando:** se comprueba el criterio de éxito del cliente de punta a punta.
 
 ## Bloque 5 — Cierre
 
-### [ ] T23 · Actualizar README (45 min) · **Jose**
+### [x] T23 · Actualizar README (45 min) · **Jose**
 - **Entregable:** propósito de F4, ejecución, ejemplo de demo y decisiones, incluido el cambio de requisito.
 
-### [ ] T24 · Actualizar bitácora de IA (45 min por persona) · **Todos**
+### [~] T24 · Actualizar bitácora de IA (45 min por persona) · **Todos**
 - **Entregable:** una fila por decisión o pieza desarrollada con apoyo de IA, con verificación propia.
+- **Estado:** hay filas de F4 de Carolina, Mariana y Jacobo. Falta la de Jose: solo él puede registrar si usó IA en sus tareas de F4 y cómo lo verificó.
 
-### [ ] T25 · Preparar video de respaldo (60 min) · **Jose**
+### [x] T25 · Preparar video de respaldo (60 min) · **Jose**
 - **Entregable:** video de máximo 3 minutos con la red dibujada, cobertura, ruta y un error.
 
-### [ ] T26 · Preparar el pitch (60 min) · **Jose**
+### [x] T26 · Preparar el pitch (60 min) · **Jose**
 - **Entregable:** guion con problema, grafo, algoritmos, visualización, cambio de requisito, pruebas y aportes.
 
-### [ ] T27 · Pull request, revisión, tag y coevaluación (45 min) · **Jose** (coevaluación: **Todos**)
+### [~] T27 · Pull request, revisión, tag y coevaluación (45 min) · **Jose** (coevaluación: **Todos**)
 - **Entregable:** PR revisado y mezclado, con tag `f4`, aportes enlazados y coevaluación confidencial enviada.
+- **Estado:** `feature4` integra las ramas de todos y tiene abierto su PR hacia `main` con los aportes enlazados. Faltan la revisión, la mezcla, el tag `f4` y la coevaluación confidencial de cada integrante.
 
 ## Criterio de aceptación de la feature
 

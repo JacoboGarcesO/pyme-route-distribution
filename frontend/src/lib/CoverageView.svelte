@@ -3,7 +3,7 @@
   import ErrorMessage from './ErrorMessage.svelte'
   import { pointTypeLabel } from './pointTypes.js'
 
-  let { points } = $props()
+  let { points, version = 0, onResult = () => {} } = $props()
 
   let originId = $state('')
   let destinationId = $state('')
@@ -19,13 +19,21 @@
     return `${point.name} (${pointTypeLabel(point.type)}) · ${point.id.slice(0, 8)}`
   }
 
+  $effect(() => {
+    version
+    result = null
+    error = null
+  })
+
   async function consult(event) {
     event.preventDefault()
     loading = true
     error = null
     result = null
+    onResult(null)
     try {
       result = await getCoverage(originId, destinationId)
+      onResult(result)
     } catch (e) {
       error = e
     } finally {

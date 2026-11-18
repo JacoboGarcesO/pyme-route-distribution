@@ -83,7 +83,9 @@ export function getCoverage(originId, destinationId) {
 
 // Ruta de menor costo. Que no exista ruta llega como respuesta válida
 // (found: false con reason), no como error; los errores son solo de entrada.
-export function getShortestPath(originId, destinationId) {
+// viaId opcional: parada obligatoria (CAMBIO-REQUISITO-F4).
+export function getShortestPath(originId, destinationId, viaId) {
   const params = new URLSearchParams({ origin: originId, destination: destinationId })
+  if (viaId) params.set('via', viaId)
   return request(`/shortest-path?${params}`)
 }

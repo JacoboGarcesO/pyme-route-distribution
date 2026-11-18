@@ -4,7 +4,7 @@
   import { pointTypeLabel } from './pointTypes.js'
   import RouteSelectors from './RouteSelectors.svelte'
 
-  let { points } = $props()
+  let { points, version = 0, onResult = () => {} } = $props()
 
   let loading = $state(false)
   let error = $state(null)
@@ -18,12 +18,20 @@
     return pathById.get(id)?.name ?? id
   }
 
-  async function search(originId, destinationId) {
+  $effect(() => {
+    version
+    result = null
+    error = null
+  })
+
+  async function search(originId, destinationId, viaId) {
     loading = true
     error = null
     result = null
+    onResult(null)
     try {
-      result = await getShortestPath(originId, destinationId)
+      result = await getShortestPath(originId, destinationId, viaId)
+      onResult(result)
     } catch (e) {
       error = e
     } finally {
@@ -47,8 +55,13 @@
             <p><strong>No hay ruta entre estos puntos.</strong></p>
             <p>{result.reason}</p>
             <p class="hint">
-              Las conexiones tienen sentido: revisa que exista un camino que salga del origen
-              y llegue al destino en esa dirección.
+              {#if result.via_id}
+                Con parada, la ruta necesita dos tramos: del origen a la parada y de la parada al
+                destino. Revisa que ambos existan en el sentido de las conexiones, o consulta sin parada.
+              {:else}
+                Las conexiones tienen sentido: revisa que exista un camino que salga del origen
+                y llegue al destino en esa dirección.
+              {/if}
             </p>
           </div>
         {:else if hops === 0}
@@ -77,12 +90,13 @@
 
           <h3>Secuencia de puntos</h3>
           <ol class="route">
-            {#each result.path as point, index (point.id)}
+            {#each result.path as point, index (index)}
               <li class="stop" class:origin={index === 0} class:destination={index === result.path.length - 1}>
                 <span class="step" aria-hidden="true">{index + 1}</span>
                 <span class="name">{point.name}</span>
                 <span class="badge {point.type}">{pointTypeLabel(point.type)}</span>
                 {#if index === 0}<span class="type">origen</span>{/if}
+                {#if point.id === result.via_id && index > 0 && index < result.path.length - 1}<span class="type">parada</span>{/if}
                 {#if index === result.path.length - 1}<span class="type">destino</span>{/if}
               </li>
               {#if index < result.connections.length}

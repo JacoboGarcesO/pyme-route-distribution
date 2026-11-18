@@ -54,6 +54,10 @@ Ver [`docs/05-tareas-feature-4.md`](05-tareas-feature-4.md).
 | T23, T26 README y pitch con el cambio | Jose | Pendientes |
 | T14 resaltar en el grafo la ruta con parada | Carolina | Pendiente: la interfaz aún no envía `via` |
 
-## Pendiente de la interfaz
+## Interfaz
 
-Ni el selector de ruta ni el dibujo del grafo usan `via` todavía. Para demostrar el cambio en la interfaz hace falta un tercer selector opcional de parada (`RouteSelectors.svelte`) y que `RouteView` y el grafo (T13, T14) muestren el punto de parada.
+`RouteSelectors.svelte` y la página de seguimiento (`#/tracking`) tienen un selector opcional de parada, y el mapa 3D marca la parada y la recorre con el camión.
+
+Regla de producto (solo en la interfaz): **la parada solo puede ser una casa o una bodega**, porque ahí se entrega o se recoge; detenerse en un cruce no tiene sentido para el despacho. La API sigue aceptando cualquier punto como `via`.
+
+Para que una casa pueda ser parada, la ciudad ampliada de la semilla (`SEED_NETWORK=1`) le da a cada cliente una salida por el otro extremo de su calle (`HOUSE_EXITS` en `backend/seed.py`). Esa salida cuesta una cuadra completa, así que nunca es un atajo: `backend/verify_city_seed.py` comprueba que ninguna ruta existente de F1 cambia.

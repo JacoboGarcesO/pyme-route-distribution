@@ -44,7 +44,8 @@ flask --app app run
 La comprobación de salud está disponible en `http://127.0.0.1:5000/health`.
 
 Para arrancar con la red de ejemplo ya cargada (el mapa de
-`docs/mapa_calles_carreras_rutapyme.png`: 15 puntos y 28 conexiones), define la
+`docs/mapa_calles_carreras_rutapyme.png`, 16 puntos y 28 conexiones, ampliado en
+F4 a una ciudad de 60 puntos sin cambiar ninguna ruta de F1), define la
 variable `SEED_NETWORK=1`:
 
 ```bash
@@ -56,6 +57,22 @@ SEED_NETWORK=1 flask --app app run
 
 Sin la variable, el backend arranca con la red vacía, que es lo que necesita el
 script de aceptación. Los datos viven en memoria: al reiniciar se pierden.
+
+### Ciudad ampliada de 89 puntos (opcional)
+
+Para una demostración con una ciudad más grande (8 calles por 8 carreras, dos
+bodegas y 24 direcciones entre edificios, casas y tiendas), arranca el backend
+**sin** `SEED_NETWORK` y, desde otra terminal, carga la ciudad por la API:
+
+```bash
+python backend/load_new_city.py            # carga la ciudad
+python backend/load_new_city.py --check    # solo valida los datos
+```
+
+El script no modifica el código del backend: registra los puntos y las
+conexiones con `POST /points` y `POST /connections`, y se niega a cargar si la
+red ya tiene puntos. "Casa Finca El Mirlo (vía cerrada)" no tiene conexiones a
+propósito, para mostrar una ruta inexistente.
 
 ## Ejecución del frontend
 
@@ -198,3 +215,32 @@ implementan y lo que falta, en
 - [Bitácora de IA](docs/bitacora-ia.md)
 - [Guion del pitch](docs/pitch-f1.md)
 - [Evidencia de las pruebas de aceptación](docs/evidencia-f1.txt)
+
+## Feature 4 — Operación demostrable
+
+F4 integra configuración de la red, cobertura y ruta de menor costo en el
+flujo del despachador. La visualización es un mapa 3D de la ciudad
+(three.js) construido con las posiciones `x, y` entregadas por `GET /network`,
+y la página `#/tracking` muestra el camión recorriendo la ruta; el backend
+sigue siendo la fuente de verdad para los nodos, conexiones, cobertura y ruta.
+
+El cambio de requisito elegido por el equipo es una **parada obligatoria**:
+
+```text
+GET /shortest-path?origin=<id>&destination=<id>&via=<id>
+```
+
+Cuando se envía `via`, la API calcula la mejor ruta origen→parada más la mejor
+ruta parada→destino. Sin `via`, el comportamiento es idéntico a F3. Una parada
+inexistente devuelve `404 VIA_NOT_FOUND`; si no existe alguno de los dos
+tramos, la respuesta de negocio es `200` con `found: false`.
+
+Los escenarios de F4 se ejecutan con el backend recién iniciado y sin semilla:
+
+```bash
+python3 acceptance/scripts/acceptance_feature_4.py
+```
+
+La evidencia está en [`docs/evidencia-f4.txt`](docs/evidencia-f4.txt), el guion
+del video en [`docs/video-f4.md`](docs/video-f4.md) y el del pitch en
+[`docs/pitch-f4.md`](docs/pitch-f4.md).
