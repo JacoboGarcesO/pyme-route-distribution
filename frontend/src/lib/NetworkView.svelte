@@ -63,6 +63,9 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 14px;
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 4px 8px 4px 0;
   }
   .node {
     position: relative;

@@ -1,7 +1,8 @@
 <script>
-  import { pointTypeLabel } from './pointTypes.js'
+  import { pointTypeLabel, selectablePoints } from './pointTypes.js'
 
   let { points, loading = false, onSearch } = $props()
+  const endpoints = $derived(selectablePoints(points))
 
   let originId = $state('')
   let destinationId = $state('')
@@ -28,7 +29,7 @@
       Origen
       <select bind:value={originId} required>
         <option value="">Elige el punto de origen</option>
-        {#each points as point (point.id)}
+        {#each endpoints as point (point.id)}
           <option value={point.id}>{optionLabel(point)}</option>
         {/each}
       </select>
@@ -37,7 +38,7 @@
       Destino
       <select bind:value={destinationId} required>
         <option value="">Elige el punto de destino</option>
-        {#each points as point (point.id)}
+        {#each endpoints as point (point.id)}
           <option value={point.id}>{optionLabel(point)}</option>
         {/each}
       </select>
