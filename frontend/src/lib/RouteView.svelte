@@ -88,6 +88,7 @@
             </div>
           </div>
 
+          <div class="detail">
           <h3>Secuencia de puntos</h3>
           <ol class="route">
             {#each result.path as point, index (index)}
@@ -133,6 +134,7 @@
               </tr>
             </tfoot>
           </table>
+          </div>
 
           <p class="why">
             <strong>¿Por qué esta ruta?</strong>
@@ -203,6 +205,13 @@
     margin: 26px 0 10px;
     font-size: 0.98rem;
     font-weight: 800;
+  }
+  /* Secuencia y tabla de conexiones: una caja de altura fija con scroll interno, para que
+     una ruta de decenas de tramos no estire la sección. */
+  .detail {
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 8px;
   }
   .route {
     display: grid;
