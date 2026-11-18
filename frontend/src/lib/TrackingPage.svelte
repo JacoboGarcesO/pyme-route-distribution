@@ -203,7 +203,7 @@
         <span>Punto A</span>
         <select bind:value={originId} required>
           <option value="">Origen</option>
-          {#each network as point (point.id)}<option value={point.id}>{point.name}</option>{/each}
+          {#each stopPoints as point (point.id)}<option value={point.id}>{point.name}</option>{/each}
         </select>
       </label>
       <label>
@@ -217,7 +217,7 @@
         <span>Punto B</span>
         <select bind:value={destinationId} required>
           <option value="">Destino</option>
-          {#each network as point (point.id)}<option value={point.id}>{point.name}</option>{/each}
+          {#each stopPoints as point (point.id)}<option value={point.id}>{point.name}</option>{/each}
         </select>
       </label>
       <button type="submit" disabled={loading || !originId || !destinationId}>
