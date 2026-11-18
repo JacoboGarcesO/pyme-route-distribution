@@ -19,6 +19,16 @@
     return `${point.name} (${pointTypeLabel(point.type)}) · ${point.id.slice(0, 8)}`
   }
 
+  // Resumen por tipo ("12 puntos de recogida · 62 barrios"): evita mostrar de entrada
+  // una lista de decenas de destinos.
+  const typeSummary = $derived.by(() => {
+    const counts = new Map()
+    for (const point of result?.reachable ?? []) {
+      counts.set(point.type, (counts.get(point.type) ?? 0) + 1)
+    }
+    return [...counts].map(([type, count]) => ({ type, count }))
+  })
+
   $effect(() => {
     version
     result = null
@@ -86,31 +96,41 @@
             <p class="success" role="status">
               Se pueden alcanzar {result.reachable.length} destinos desde este origen:
             </p>
-            <ul class="reachable">
-              {#each result.reachable as point (point.id)}
-                <li>
-                  <span class="name">{point.name}</span>
-                  <span class="badge {point.type}">{pointTypeLabel(point.type)}</span>
-                </li>
+            <ul class="summary">
+              {#each typeSummary as item (item.type)}
+                <li><strong>{item.count}</strong> <span class="badge {item.type}">{pointTypeLabel(item.type)}</span></li>
               {/each}
             </ul>
+            <details>
+              <summary>Ver la lista completa de destinos</summary>
+              <ul class="reachable">
+                {#each result.reachable as point (point.id)}
+                  <li>
+                    <span class="name">{point.name}</span>
+                    <span class="badge {point.type}">{pointTypeLabel(point.type)}</span>
+                  </li>
+                {/each}
+              </ul>
+            </details>
           {/if}
           {#if result.visit_order?.length > 1}
-            <h3>Orden de visita</h3>
-            <p class="muted">
-              Así recorre la red el sistema: primero el origen, luego sus vecinos más
-              cercanos, y así por capas.
-            </p>
-            <ol class="visit-order">
-              {#each result.visit_order as pointId, index (pointId)}
-                {@const point = pointsById.get(pointId)}
-                <li class:origin={index === 0}>
-                  <span class="step" aria-hidden="true">{index + 1}</span>
-                  <span class="name">{point ? point.name : pointId}</span>
-                  {#if index === 0}<span class="type">origen</span>{/if}
-                </li>
-              {/each}
-            </ol>
+            <details>
+              <summary>Ver el orden de visita</summary>
+              <p class="muted">
+                Así recorre la red el sistema: primero el origen, luego sus vecinos más
+                cercanos, y así por capas.
+              </p>
+              <ol class="visit-order">
+                {#each result.visit_order as pointId, index (pointId)}
+                  {@const point = pointsById.get(pointId)}
+                  <li class:origin={index === 0}>
+                    <span class="step" aria-hidden="true">{index + 1}</span>
+                    <span class="name">{point ? point.name : pointId}</span>
+                    {#if index === 0}<span class="type">origen</span>{/if}
+                  </li>
+                {/each}
+              </ol>
+            </details>
           {/if}
         {:else if result.reachable}
           <p class="success" role="status">Sí se puede llegar al destino desde este origen.</p>
@@ -182,6 +202,34 @@
     font-weight: 600;
     color: var(--muted);
   }
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .summary li {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  details {
+    margin-top: 16px;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  details[open] > summary {
+    margin-bottom: 4px;
+  }
   .reachable {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -209,11 +257,6 @@
   .name {
     font-weight: 700;
     overflow-wrap: anywhere;
-  }
-  h3 {
-    margin: 26px 0 4px;
-    font-size: 0.98rem;
-    font-weight: 800;
   }
   .visit-order {
     display: flex;
