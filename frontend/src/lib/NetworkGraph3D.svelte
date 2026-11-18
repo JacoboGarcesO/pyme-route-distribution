@@ -108,25 +108,59 @@
       {/if}
     </div>
   {/if}
-  <div class="stage" class:hidden={network.length === 0} bind:this={container}></div>
+  <div class="stage-wrap" class:hidden={network.length === 0}>
+    <div class="stage" bind:this={container}></div>
+    {#if network.length > 0}
+      <ul class="legend" aria-label="Leyenda del mapa">
+        <li>
+          <svg class="ico" style="color:#475569" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13" /><path d="M7 21v-6h10v6M7 18h10" /></svg>
+          Bodega
+        </li>
+        <li>
+          <svg class="ico" style="color:#2563eb" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l8-8 8 8" /><path d="M6 10v10h12V10" /><path d="M10 20v-5h4v5" /></svg>
+          Cliente
+        </li>
+        <li>
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" fill="#111827" stroke="none" /><path d="M7 12h9M12.5 8l4 4-4 4" stroke="#ffffff" /></svg>
+          Un sentido
+        </li>
+        <li>
+          <svg class="ico" style="color:#ca8a04" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14M14 4l4 4-4 4" /><path d="M20 16H6M10 12l-4 4 4 4" /></svg>
+          Doble sentido
+        </li>
+        {#if routeShown}
+          <li>
+            <svg class="ico" style="color:#2563eb" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2" /><circle cx="18" cy="6" r="2" /><path d="M8 18h5a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h5" /></svg>
+            Ruta
+          </li>
+          {#if route.via_id}
+            <li>
+              <svg class="ico" style="color:#f97316" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" /><circle cx="12" cy="11" r="2" /></svg>
+              Parada
+            </li>
+          {/if}
+        {/if}
+        {#if coverage}
+          <li>
+            <svg class="ico" style="color:#16a34a" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8 12l3 3 5-6" /></svg>
+            Alcanzable
+          </li>
+          <li>
+            <svg class="ico" style="color:#dc2626" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9 9l6 6M15 9l-6 6" /></svg>
+            Sin camino
+          </li>
+        {/if}
+      </ul>
+    {/if}
+  </div>
   {#if network.length > 0}
-    <ul class="legend">
-      <li><span class="sw warehouse"></span>Bodega</li>
-      <li><span class="sw pickup"></span>Cliente (casa, edificio o tienda, en azul y con dirección)</li>
-      <li><span class="sw oneway"></span>Sentido único (señal UNA VÍA y flechas)</li>
-      <li><span class="sw twoway"></span>Doble sentido (línea amarilla, ⇄)</li>
-      <li><span class="sw route"></span>Ruta del camión</li>
-      <li><span class="sw via"></span>Parada obligatoria</li>
-      <li><span class="sw reach"></span>Alcanzable desde el origen</li>
-      <li><span class="sw noreach"></span>Sin camino desde el origen</li>
-    </ul>
     <p class="hint">
       {#if route?.found && route.path.length > 1}
         El camión recorre la ruta A → B{route.via_id ? ' deteniéndose en la parada' : ''}: {route.total_cost_km} km.
       {:else if coverage}
-        Los anillos muestran la última cobertura consultada. Arrastra para girar y usa la rueda para acercar.
+        Los anillos muestran la última cobertura consultada. Arrastra para girar, clic derecho para mover y rueda para acercar.
       {:else}
-        Calcula una ruta para ver el camión recorrerla, o consulta la cobertura para ver qué puntos alcanza un origen. Arrastra para girar y usa la rueda para acercar.
+        Calcula una ruta para ver el camión recorrerla, o consulta la cobertura para ver qué puntos alcanza un origen. Arrastra para girar, clic derecho para mover y rueda para acercar.
       {/if}
     </p>
   {/if}
@@ -156,7 +190,10 @@
     border: 1px solid var(--border);
     cursor: grab;
   }
-  .stage.hidden {
+  .stage-wrap {
+    position: relative;
+  }
+  .stage-wrap.hidden {
     display: none;
   }
   .empty {
@@ -169,34 +206,36 @@
     text-align: center;
   }
   .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 18px;
-    margin: 14px 0 0;
-    padding: 0;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: grid;
+    gap: 5px;
+    margin: 0;
+    padding: 8px 10px;
     list-style: none;
-    font-size: 0.85rem;
-    color: var(--muted);
+    font-size: 0.75rem;
+    color: #334155;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    pointer-events: none; /* el arrastre del mapa pasa por encima del recuadro */
   }
   .legend li {
     display: flex;
     align-items: center;
     gap: 6px;
   }
-  .sw {
-    width: 14px;
-    height: 14px;
-    border-radius: 4px;
-    border: 1px solid var(--border-strong);
+  .ico {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
-  .sw.warehouse { background: #ffffff; box-shadow: inset 0 -5px 0 #2563eb; }
-  .sw.pickup { background: #2563eb; }
-  .sw.oneway { background: #111111; box-shadow: inset 0 0 0 4px #111111, inset 0 0 0 6px #ffffff; }
-  .sw.twoway { background: repeating-linear-gradient(90deg, #b9c1cf 0 3px, #facc15 3px 6px); }
-  .sw.route { background: #2563eb; }
-  .sw.via { background: #f97316; border-radius: 50%; }
-  .sw.reach { background: transparent; border: 3px solid #16a34a; border-radius: 50%; }
-  .sw.noreach { background: transparent; border: 3px solid #dc2626; border-radius: 50%; }
   .summary {
     margin: 0 0 12px;
     padding: 12px 16px;
