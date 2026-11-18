@@ -37,11 +37,12 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 
 ## Bloque 0 — Organización
 
-### [ ] T01 · Crear la rama de la feature (20 min) · **Carolina**
+### [x] T01 · Crear la rama de la feature (20 min) · **Carolina**
 - **Entregable:** rama `feat-4/operacion-demostrable` creada desde `main` con el tag `f3`.
 - **Hecho cuando:** la rama existe y parte del tag `f3`.
+- **Nota:** el equipo integró F4 en la rama `feature4` (no `feat-4/operacion-demostrable`); `git merge-base --is-ancestor f3 feature4` confirma que parte del tag `f3`.
 
-### [ ] T02 · Registrar pitch y reparto de F4 (20 min) · **Carolina**
+### [x] T02 · Registrar pitch y reparto de F4 (20 min) · **Carolina**
 - **Entregable:** actualización de `docs/equipo.md` con responsable del pitch y tareas asignadas.
 - **Hecho cuando:** el reparto cumple las reglas de participación del curso.
 
@@ -127,7 +128,7 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 - **Entregable:** salida completa en `docs/evidencia-f4.txt`.
 - **Hecho cuando:** corre desde un estado limpio sin intervención manual.
 
-### [~] T22 · Verificación cruzada con la interfaz real (45 min) · **Jose**
+### [x] T22 · Verificación cruzada con la interfaz real (45 min) · **Jose**
 - **Entregable:** recorrido del flujo completo del cliente en el navegador, con notas de lo encontrado.
 - **Hecho cuando:** se comprueba el criterio de éxito del cliente de punta a punta.
 
@@ -136,8 +137,9 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 ### [x] T23 · Actualizar README (45 min) · **Jose**
 - **Entregable:** propósito de F4, ejecución, ejemplo de demo y decisiones, incluido el cambio de requisito.
 
-### [ ] T24 · Actualizar bitácora de IA (45 min por persona) · **Todos**
+### [~] T24 · Actualizar bitácora de IA (45 min por persona) · **Todos**
 - **Entregable:** una fila por decisión o pieza desarrollada con apoyo de IA, con verificación propia.
+- **Estado:** hay filas de F4 de Carolina, Mariana y Jacobo. Falta la de Jose: solo él puede registrar si usó IA en sus tareas de F4 y cómo lo verificó.
 
 ### [x] T25 · Preparar video de respaldo (60 min) · **Jose**
 - **Entregable:** video de máximo 3 minutos con la red dibujada, cobertura, ruta y un error.
@@ -145,8 +147,9 @@ T13 depende de T10 y T11. T14 y T15 dependen de T13.
 ### [x] T26 · Preparar el pitch (60 min) · **Jose**
 - **Entregable:** guion con problema, grafo, algoritmos, visualización, cambio de requisito, pruebas y aportes.
 
-### [ ] T27 · Pull request, revisión, tag y coevaluación (45 min) · **Jose** (coevaluación: **Todos**)
+### [~] T27 · Pull request, revisión, tag y coevaluación (45 min) · **Jose** (coevaluación: **Todos**)
 - **Entregable:** PR revisado y mezclado, con tag `f4`, aportes enlazados y coevaluación confidencial enviada.
+- **Estado:** `feature4` integra las ramas de todos y tiene abierto su PR hacia `main` con los aportes enlazados. Faltan la revisión, la mezcla, el tag `f4` y la coevaluación confidencial de cada integrante.
 
 ## Criterio de aceptación de la feature
 

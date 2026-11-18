@@ -10,6 +10,10 @@
 | **Carolina** | Organización, integración de la pantalla y resaltado de cobertura, ruta y errores | T01–T03, T12, T14–T16 |
 | **Todos** | Bitácora de IA propia y coevaluación | T24, T27 |
 
+## Pitch
+
+**Jose** presenta el pitch de F4 (T26, guion en [`docs/pitch-f4.md`](pitch-f4.md)). Cada integrante tiene tareas propias en el reparto y su fila en la bitácora de IA, como piden las reglas de participación del curso.
+
 ## Orden de ejecución
 
 1. Carolina prepara la rama, el reparto y el backlog.

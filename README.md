@@ -44,7 +44,8 @@ flask --app app run
 La comprobación de salud está disponible en `http://127.0.0.1:5000/health`.
 
 Para arrancar con la red de ejemplo ya cargada (el mapa de
-`docs/mapa_calles_carreras_rutapyme.png`: 15 puntos y 28 conexiones), define la
+`docs/mapa_calles_carreras_rutapyme.png`, 16 puntos y 28 conexiones, ampliado en
+F4 a una ciudad de 60 puntos sin cambiar ninguna ruta de F1), define la
 variable `SEED_NETWORK=1`:
 
 ```bash
@@ -218,9 +219,10 @@ implementan y lo que falta, en
 ## Feature 4 — Operación demostrable
 
 F4 integra configuración de la red, cobertura y ruta de menor costo en el
-flujo del despachador. La visualización usa el SVG del frontend con las
-posiciones `x, y` entregadas por `GET /network`; el backend sigue siendo la
-fuente de verdad para los nodos, conexiones, cobertura y ruta.
+flujo del despachador. La visualización es un mapa 3D de la ciudad
+(three.js) construido con las posiciones `x, y` entregadas por `GET /network`,
+y la página `#/tracking` muestra el camión recorriendo la ruta; el backend
+sigue siendo la fuente de verdad para los nodos, conexiones, cobertura y ruta.
 
 El cambio de requisito elegido por el equipo es una **parada obligatoria**:
 

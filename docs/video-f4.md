@@ -4,19 +4,20 @@ Duración máxima: 3 minutos.
 
 1. **Inicio (20 s):** abrir RutaPyme con el backend activo y mostrar la pantalla
    única: operación, cobertura, ruta y red dibujada.
-2. **Red (35 s):** registrar los cinco puntos de la red de aceptación y las
-   cuatro conexiones. Mostrar que el SVG distingue nodos, flechas y costos, y
-   que la casa aislada no tiene conexiones.
-3. **Cobertura (30 s):** consultar desde la bodega. Mostrar norte, centro y
-   Casa A como alcanzables; la casa aislada no aparece.
-4. **Ruta (35 s):** pedir Bodega→Casa A. Mostrar la ruta de 7 km por Norte y
-   Centro, aunque existe una conexión directa de 9 km.
-5. **Cambio F4 (30 s):** seleccionar Centro como parada obligatoria y repetir la
-   consulta con `via`. Mostrar que la ruta contiene la parada y conserva el
-   costo exacto.
+2. **Red (35 s):** con la ciudad cargada (`python backend/load_new_city.py`),
+   registrar un punto nuevo y su conexión. Mostrar en el mapa 3D las calles de
+   doble sentido (línea amarilla), las de sentido único (señal UNA VÍA) y el
+   costo pintado en cada calle.
+3. **Cobertura (30 s):** consultar desde Bodega central. Mostrar los anillos
+   verdes de los alcanzables y el rojo de Casa Finca El Mirlo, sin camino.
+4. **Ruta (35 s):** pedir una ruta entre la bodega y un cliente y mostrar la
+   explicación sobre el mapa: cada tramo con su costo y la suma total.
+5. **Cambio F4 (30 s):** repetir con un cliente como parada obligatoria (la
+   interfaz solo ofrece casas y bodegas como parada). Mostrar la parada marcada
+   y abrir el seguimiento 3D: el camión entrega en la parada y luego en B.
 6. **Errores (25 s):** mostrar una ruta inexistente como respuesta válida y un
    costo inválido con su mensaje; mencionar que un nodo inexistente devuelve
-   `DESTINATION_NOT_FOUND`.
+   `DESTINATION_NOT_FOUND` (cubierto por el script de aceptación).
 7. **Cierre (5 s):** mostrar `docs/evidencia-f4.txt` con el resumen de pruebas.
 
 La grabación real debe hacerse sobre el frontend integrado; este archivo es el

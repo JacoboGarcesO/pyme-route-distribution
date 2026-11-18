@@ -999,13 +999,17 @@ del backend para que la API sea la fuente de verdad.
 
 ### T10 · Decisión de visualización de la red
 
-La red se dibuja con un **SVG propio** en el frontend. `GET /network` entrega
+La red se dibuja como un **mapa 3D propio** en el frontend con three.js
+(`NetworkGraph3D.svelte` y `city3d.js`; la decisión inicial era un SVG y se
+cambió en T13 por un mapa 3D, con el mismo principio). `GET /network` entrega
 los nodos, sus posiciones `x` y `y`, y las conexiones dirigidas con su costo.
 Las posiciones son datos declarados por el backend al crear el punto; no se
 calculan ni se inventan en el navegador. Una red vacía muestra un mensaje.
 
-Las flechas se construyen a partir de las conexiones devueltas por la API; una
-conexión inversa se dibuja como arista distinta. Una ruta se marca comparando
+Cada conexión es una calle: de doble sentido si existe la inversa (línea
+amarilla) y de sentido único con la señal UNA VÍA en caso contrario; su costo
+va pintado en el asfalto. Edificios, árboles, semáforos y peatones son decorado
+y no alteran la red. Una ruta se marca comparando
 los pares `origin_id`/`destination_id` calculados por `GET /shortest-path`.
 NetworkX no decide ni cobertura ni ruta: si se usa, solo podría representar
 resultados ya calculados por el backend.

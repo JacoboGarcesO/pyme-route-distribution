@@ -28,9 +28,31 @@ Escenarios cubiertos por F4:
 11. Parada obligatoria via: ruta correcta y costo exacto 7.
 12. Parada inexistente: HTTP 404 VIA_NOT_FOUND.
 
-Verificación cruzada de interfaz:
+Verificación cruzada de interfaz (T22), 2026-11-18, rama feature4 integrada:
 
-El frontend existente muestra configuración, cobertura y ruta, pero todavía no
-incorpora el selector `via` ni el dibujo SVG de F4. Por eso T22 queda en curso
-hasta integrar T12–T16 de los demás responsables. La API y el script sí quedan
-verificados de punta a punta.
+Backend sin semilla con la ciudad de 89 puntos (python backend/load_new_city.py)
+y frontend en http://localhost:5173. Recorrido del criterio de aceptación:
+
+1. Registrar la red: punto "Cliente Demo QA" creado; aparece en 7 selectores
+   sin recargar la página (T12).
+2. Datos inválidos: conexión con costo -3 rechazada con "costo debe ser mayor
+   que 0 km" (HTTP 422); con 0.05 km la conexión se crea (T16).
+3. Verla dibujada: el mapa 3D dibuja la ciudad con la última consulta (T13).
+4. Cobertura desde Bodega central: 88 destinos alcanzables; solo la casa
+   aislada queda fuera (T15).
+5. Ruta con parada: Bodega central -> Cliente Demo QA con parada en Edificio
+   Torre Alameda: 0.87 km en 6 tramos, la parada marcada como PARADA, cada
+   tramo con su costo y la ruta resaltada en el mapa (T14, cambio de requisito).
+6. Falta de conexión: hacia Casa Finca El Mirlo responde "No hay ruta entre
+   estos puntos" con la explicación del sentido de las conexiones.
+7. Seguimiento 3D (#/tracking): el camión carga en la bodega, sale, espera en
+   el semáforo en rojo y llega al destino.
+
+Resultado: el criterio de aceptación de F4 se cumple de punta a punta en la
+interfaz real. Nota: la interfaz solo ofrece casas y bodegas como parada; la
+API sigue aceptando cualquier punto como `via` (docs/cambio-requisito-f4.md).
+
+Pruebas repetidas sobre feature4 integrada:
+verify_nucleus 46/46, verify_coverage 44/44, verify_shortest_path 23/23,
+verify_shortest_path_api 30/30, verify_via 13/13, verify_city_seed 20/20;
+aceptación F1 23/23, F2 9/9, F3 6/6, F4 12/12; npm run build sin errores.
