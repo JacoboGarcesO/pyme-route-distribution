@@ -61,6 +61,8 @@
   }
   .table-wrap {
     overflow-x: auto;
+    max-height: 420px;
+    overflow-y: auto;
   }
   table {
     min-width: 560px;
