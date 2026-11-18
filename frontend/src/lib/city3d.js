@@ -203,6 +203,14 @@ export function createStage(container, { focusBlur = false } = {}) {
   observer.observe(container)
   resize()
 
+  // El mapa solo se redibuja mientras se ve en pantalla: fuera de la vista no gasta
+  // la tarjeta gráfica y el resto de la página (listas desplegables) responde mejor.
+  let visible = true
+  const visibility = new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting
+  })
+  visibility.observe(container)
+
   let frame = 0
   return {
     scene,
@@ -215,6 +223,7 @@ export function createStage(container, { focusBlur = false } = {}) {
       const loop = () => {
         frame = requestAnimationFrame(loop)
         const dt = Math.min(clock.getDelta(), 0.1)
+        if (!visible) return
         tick(clock.elapsedTime, dt)
         controls.update()
         // La sombra sigue a la mira para que la zona visible siempre la tenga.
@@ -251,6 +260,7 @@ export function createStage(container, { focusBlur = false } = {}) {
     dispose() {
       cancelAnimationFrame(frame)
       observer.disconnect()
+      visibility.disconnect()
       controls.dispose()
       disposeObject(scene)
       target?.dispose()
