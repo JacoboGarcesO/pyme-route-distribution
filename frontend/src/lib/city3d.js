@@ -609,8 +609,9 @@ function townhouse(L, rand, wall) {
   frontYard(L, rand)
 }
 
-function apartment(L, rand) {
-  const floors = 3 + Math.floor(rand() * 3)
+// Un cliente "Edificio ..." se dibuja más alto y con la azotea azul, como el techo azul de las casas.
+function apartment(L, rand, tall = false) {
+  const floors = tall ? 6 + Math.floor(rand() * 2) : 3 + Math.floor(rand() * 3)
   const h = floors * 2.7
   const wall = pick(rand, [0xf1f5f9, 0xe2e8f0, 0xdbeafe, 0xfef3c7, 0xfde2cf])
   L('box', 0x94a3b8, 0, 0.3, 0, 6.1, 0.6, 6.1)
@@ -628,14 +629,16 @@ function apartment(L, rand) {
   }
   L('box', 0x334155, 0, 2.2, 3.4, 2.2, 0.15, 1.2) // marquesina de la entrada
   L('box', 0x1e293b, 0, 1, 2.95, 1.6, 2, 0.06, false)
-  L('box', 0x475569, 0, h + 0.15, 0, 6, 0.3, 6)
+  L('box', tall ? BLUE : 0x475569, 0, h + 0.15, 0, 6, 0.3, 6)
   L('cyl', 0x1e3a5f, 1.4, h + 1, -1.3, 1.4, 1.4, 1.4)
   L('cyl', 0x94a3b8, -1.8, h + 1.4, -1.8, 0.06, 2.4, 0.06)
 }
 
-function shop(L, rand) {
+// Un cliente "Tienda ..." lleva el toldo azul de la marca del cliente.
+function shop(L, rand, client = false) {
   const wall = pick(rand, WALLS)
-  const awning = pick(rand, [0xef4444, 0x2563eb, 0x10b981, 0xf59e0b, 0x8b5cf6])
+  const picked = pick(rand, [0xef4444, 0x2563eb, 0x10b981, 0xf59e0b, 0x8b5cf6])
+  const awning = client ? BLUE : picked
   L('box', 0xd6d3d1, 0, 0.15, 0, 6, 0.3, 5.2)
   L('box', wall, 0, 2, 0, 5.8, 3.7, 5)
   L('box', 0x334155, 0, 1.35, 2.5, 4.9, 2.1, 0.06, false)
@@ -649,6 +652,14 @@ function shop(L, rand) {
   L('box', WHITE, 0, 3.45, 2.61, 2.6, 0.18, 0.03, false)
   L('box', 0x92400e, -2.3, 0.45, 3.1, 0.8, 0.6, 0.8) // matera
   L('sphere', 0x4d9e63, -2.3, 1, 3.1, 0.9, 0.8, 0.9)
+}
+
+// El backend solo distingue bodega, barrio y punto de recogida: que un cliente sea un
+// edificio o una tienda se deduce del nombre ("Edificio Torre Alameda", "Tienda La Esquina").
+function placeKind(name) {
+  if (/^\s*edificio\b/i.test(name)) return 'building'
+  if (/^\s*tienda\b/i.test(name)) return 'store'
+  return 'house'
 }
 
 function park(L, rand) {
@@ -789,6 +800,7 @@ export function createCity(network, route, coverage = null) {
   group.userData = anim
   const B = makeBatcher()
   const rand = seeded(7)
+  const clientRand = seeded(21) // edificios y tiendas de clientes: no alteran el resto de la ciudad
   const pos = positions(network)
   const byId = new Map(network.map((p) => [p.id, p]))
   const isAddress = (id) => byId.get(id)?.type === 'pickup_point'
@@ -1019,7 +1031,10 @@ export function createCity(network, route, coverage = null) {
     if (address || lone) {
       const site = address?.site ?? pos.get(point.id)
       const front = address?.front ?? new THREE.Vector3(0, 0, 1)
-      house(B.frame(site, front), rand, WHITE, BLUE)
+      const kind = placeKind(point.name)
+      if (kind === 'building') apartment(B.frame(site, front), clientRand, true)
+      else if (kind === 'store') shop(B.frame(site, front), clientRand, true)
+      else house(B.frame(site, front), rand, WHITE, BLUE)
       occupied.push([site, 3.6])
       // Letrero del cliente en el antejardín, mirando a la calle.
       const [texture, ratio] = boardTexture(point.name, address?.text ?? 'Cliente WareTrack', '#2563eb')

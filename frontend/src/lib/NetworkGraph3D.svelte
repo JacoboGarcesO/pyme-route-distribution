@@ -112,7 +112,7 @@
   {#if network.length > 0}
     <ul class="legend">
       <li><span class="sw warehouse"></span>Bodega</li>
-      <li><span class="sw pickup"></span>Cliente (techo azul, con dirección)</li>
+      <li><span class="sw pickup"></span>Cliente (casa, edificio o tienda, en azul y con dirección)</li>
       <li><span class="sw oneway"></span>Sentido único (señal UNA VÍA y flechas)</li>
       <li><span class="sw twoway"></span>Doble sentido (línea amarilla, ⇄)</li>
       <li><span class="sw route"></span>Ruta del camión</li>
