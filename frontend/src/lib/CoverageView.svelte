@@ -235,8 +235,10 @@
     grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
     gap: 10px;
     margin: 14px 0 0;
-    padding: 0;
+    padding: 4px 8px 4px 0;
     list-style: none;
+    max-height: 300px;
+    overflow-y: auto;
   }
   .reachable li {
     display: flex;
@@ -263,9 +265,11 @@
     flex-wrap: wrap;
     gap: 8px;
     margin: 12px 0 0;
-    padding: 0;
+    padding: 0 8px 0 0;
     list-style: none;
     counter-reset: none;
+    max-height: 220px;
+    overflow-y: auto;
   }
   .visit-order li {
     position: relative;
