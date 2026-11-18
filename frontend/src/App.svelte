@@ -76,7 +76,7 @@
 
 
 {#if hash === '#/tracking'}
-  <TrackingPage />
+  <TrackingPage initialRoute={route} />
 {:else}
 <div class="shell">
   <aside class="sidebar">

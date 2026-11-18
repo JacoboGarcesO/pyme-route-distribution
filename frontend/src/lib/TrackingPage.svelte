@@ -8,6 +8,9 @@
   import ErrorMessage from './ErrorMessage.svelte'
   import { pointTypeLabel } from './pointTypes.js'
 
+  // Ruta que el usuario calculó en el panel: si existe, el seguimiento abre con ella ya elegida.
+  let { initialRoute = null } = $props()
+
   let network = $state([])
   let networkError = $state(null)
   let originId = $state('')
@@ -70,7 +73,15 @@
     networkError = null
     try {
       network = await getNetwork()
-      originId ||= network.find((p) => p.type === 'warehouse')?.id ?? ''
+      if (initialRoute) {
+        // Los selectores se llenan después de cargar la red, cuando ya existen sus opciones.
+        originId = initialRoute.origin_id
+        destinationId = initialRoute.destination_id
+        viaId = initialRoute.via_id ?? ''
+        route = initialRoute
+      } else {
+        originId ||= network.find((p) => p.type === 'warehouse')?.id ?? ''
+      }
     } catch (error) {
       networkError = error
     }
